@@ -1,0 +1,93 @@
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
+HEADER
+{
+	CompileTargets = ( IS_SM_50 && ( PC || VULKAN ) );
+	Description = "Screenspace hint shader.";
+
+	DevShader = true;
+}
+
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
+FEATURES
+{
+    #include "common/features.hlsl"
+
+	Feature( F_DISABLE_DEPTH, 0..1, "Disable Depth" );
+}
+
+MODES
+{
+    VrForward();													// Indicates this shader will be used for main rendering
+    Depth( "vr_depth_only.vfx" ); 									// Shader that will be used for shadowing and depth prepass
+    ToolsVis( S_MODE_TOOLS_VIS ); 									// Ability to see in the editor
+    ToolsWireframe( "vr_tools_wireframe.vfx" ); 					// Allows for mat_wireframe to work
+	ToolsShadingComplexity( "vr_tools_shading_complexity.vfx" ); 	// Shows how expensive drawing is in debug view
+}
+
+//=========================================================================================================================
+COMMON
+{
+	#include "common/shared.hlsl"
+
+	#define S_TRANSLUCENT 1
+	#define BLEND_MODE_ALREADY_SET
+	#define DEPTH_STATE_ALREADY_SET
+	#define STENCIL_ALREADY_SET
+}
+
+//=========================================================================================================================
+
+struct VS_INPUT
+{
+	#include "vr_common_vs_input.fxc"
+};
+
+struct PS_INPUT
+{
+	#include "vr_common_ps_input.fxc"
+};
+
+//=========================================================================================================================
+
+VS
+{
+	#include "vr_common_vs_code.fxc"
+
+	PS_INPUT MainVs( INSTANCED_SHADER_PARAMS( VS_INPUT i ) )
+	{
+		PS_INPUT o;
+		
+		o = VS_CommonProcessing( i );
+
+		return VS_CommonProcessing_Post( o );
+	}
+}
+PS
+{
+	#include "vr_common_ps_code.fxc"
+
+	CreateInputTexture2D( TextureColor, Srgb, 8, "", "_day_3k", "Textures", Default3( 0.9, 0.9, 0.9 ) );	
+	CreateTexture2D( g_tColor ) < Channel( RGBA, None( TextureColor ), Srgb ); OutputFormat( DXT5 ); SrgbRead( true ); >;
+	TextureAttribute( RepresentativeTexture, g_tColor );
+	
+	PS_OUTPUT MainPs( PS_INPUT i )
+	{
+		
+		float2 vPositionUvWithOffset = ( ( i.vPositionSs.xy ) - g_vViewportOffset ) / g_vRenderTargetSize;
+		float fAspectRatio = g_vViewportSize.y / g_vViewportSize.x;
+		float2 vScreenUv = vPositionUvWithOffset;
+		
+		
+		float4 texture = Tex2D( g_tColor, vScreenUv.xy );
+
+		PS_OUTPUT ps_output;
+		ps_output.vColor.rgba = float4(vScreenUv.xy, 0, 1);
+		ps_output.vColor.rgba = float4( texture.rgb, 1.0 );
+
+		return ps_output;
+	}
+}
