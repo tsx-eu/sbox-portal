@@ -6,9 +6,26 @@ using System.Threading.Tasks;
 
 namespace Sandbox
 {
-	public class GameCamera : CameraMode
+	public partial class GameCamera : CameraMode
 	{
 		Vector3 lastPos;
+
+		public GameCamera() {
+
+		}
+
+		public GameCamera(Vector3 pos, Rotation rot)
+		{
+			Position = pos;
+			Rotation = rot;
+		}
+
+		public override void Build( ref CameraSetup camSetup )
+		{
+			base.Build( ref camSetup );
+			camSetup.Position = Position;
+			camSetup.Rotation = Rotation;
+		}
 
 		public override void Activated()
 		{

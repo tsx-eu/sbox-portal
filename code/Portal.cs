@@ -31,34 +31,23 @@ namespace Sandbox
 			}
 		}
 
-		public void Update(Portal portal, Entity player) {
+		public void Update() {
 			CreateViewTexture();
 
-			pos = GetPosition( portal, player );
-			rot = GetRotation( portal, player );
-			fov = GetFOV(portal, player);
+			pos = source.GetCameraPosition( Local.Pawn );
+			rot = source.GetRotation( Local.Pawn );
+			fov = GetFOV( Local.Pawn );
 
 			// FIXME: Moving Transform.position to portal position cause bug in the renderer.
 
 			if ( quad == null ) {
 				quad = new VertexBuffer();
 				quad.Init( true );
-				quad.AddCube( portal.Position, new Vector3( 128, 4, 128 ), portal.Rotation );
+				quad.AddCube( source.Position, new Vector3( 128, 4, 128 ), source.Rotation );
 			}
 		}
 
-		public Vector3 GetPosition( Portal portal, Entity player ) {
-			var relativePositionFromOrigin = portal.Position - player.EyePosition;
-			var relativeRotation = relativePositionFromOrigin * portal.Rotation.Inverse * portal.linkedPortal.Rotation;
-			var relativePositionToPortal = portal.linkedPortal.Position - relativeRotation;
-
-			return relativePositionToPortal;
-		}
-		public Rotation GetRotation( Portal portal, Entity player ) {
-			var rot = portal.Rotation.Inverse * portal.linkedPortal.Rotation * player.EyeRotation;
-			return rot;
-		}
-		public float GetFOV( Portal portal, Entity player ) {
+		private float GetFOV( Entity player ) {
 			var camera = (player as Pawn).CameraMode as GameCamera;
 			float fov = camera.FieldOfView;
 			var aspect = Screen.Width / Screen.Height;
@@ -100,7 +89,7 @@ namespace Sandbox
 		[Net, Property( "Target" ), FGDType( "target_destination" )]
 		public string targetName { get; set; }
 
-		[Net] public List<PortalTraveller> trackedTravellers { get; set; } = new List<PortalTraveller>();
+		public List<PortalTraveller> trackedTravellers { get; set; } = new List<PortalTraveller>();
 
 		private PortalRendering render;
 		public Portal linkedPortal { get; set; }
@@ -135,6 +124,37 @@ namespace Sandbox
 			}
 		}
 
+		private void checkTraversal() {
+
+
+			if ( linkedPortal == null )
+				return;
+
+			for ( int i = 0; i < trackedTravellers.Count; i++ )
+			{
+				var traveller = trackedTravellers[i];
+				var transform = Transform.Rotation.Left;
+
+				var offset = (traveller.Entity.Position - Position);
+
+				var newSide = Math.Sign( Vector3.Dot( offset, transform ) );
+				var oldSide = Math.Sign( Vector3.Dot( traveller.previousOffsetFromPortal, transform ) );
+
+				if ( newSide != oldSide )
+				{
+					traveller.Teleport( this, linkedPortal );
+					linkedPortal.OnTriggerEnter( traveller );
+					this.trackedTravellers.RemoveAt( i );
+					i--;
+					continue;
+				}
+				else
+				{
+					traveller.previousOffsetFromPortal = offset;
+				}
+			}
+		}
+
 		[Event.Tick]
 		public void OnServerTick()
 		{
@@ -143,29 +163,11 @@ namespace Sandbox
 
 			if ( linkedPortal == null )
 				linkedPortal = FindByName( targetName ) as Portal;
-
-
-			if ( linkedPortal != null ) {
-
-				foreach(var traveller in trackedTravellers ) {
-
-					var offset = traveller.Entity.Position - Position;
-
-					var newSide = Vector3.Forward.Dot( offset );
-					var oldSide = Vector3.Forward.Dot( traveller.previousOffsetFromPortal );
-
-					if( newSide != oldSide ) {
-						traveller.Teleport( this, linkedPortal );
-					}
-
-					traveller.previousOffsetFromPortal = offset;
-				}
-			}
+			checkTraversal();
 		}
 
 		[Event.Frame]
-		public void OnPlayerTick(  )
-		{
+		public void OnClientTick( ) {
 			if ( !IsClient )
 				return;
 
@@ -178,30 +180,44 @@ namespace Sandbox
 						destination = linkedPortal
 					};
 					render.SetParent( this );
-					//SceneObject.RenderingEnabled = false;
 					EnableDrawing = false;
 				}
 			}
 
 			if ( linkedPortal != null ) {
-				render.Update( this, Local.Pawn );
+				render.Update();
+				checkTraversal();
 			}
 
 			if( camera != null ) {
-				camera.Position = render.GetPosition( this, Local.Pawn );
-				camera.Rotation = render.GetRotation( this, Local.Pawn );
+				camera.Position = GetCameraPosition( Local.Pawn );
+				camera.Rotation = GetRotation( Local.Pawn );
 			}
 		}
 
-
-		public override void EndTouch( Entity other )
+		public Vector3 GetPosition( Entity player )
 		{
-			base.EndTouch( other );
-			if ( other.IsWorld )
-				return;
+			var relativePositionFromOrigin = Position - player.Position;
+			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * linkedPortal.Rotation;
+			var relativePositionToPortal = linkedPortal.Position - relativeRotation;
 
-			Log.Info( other );
+			return relativePositionToPortal;
 		}
+		public Vector3 GetCameraPosition( Entity player )
+		{
+			var relativePositionFromOrigin = Position - player.EyePosition;
+			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * linkedPortal.Rotation;
+			var relativePositionToPortal = linkedPortal.Position - relativeRotation;
+
+			return relativePositionToPortal;
+		}
+		public Rotation GetRotation( Entity player )
+		{
+			var rot = Rotation.Inverse * linkedPortal.Rotation * player.EyeRotation;
+			return rot;
+		}
+
+
 		public override void StartTouch( Entity other )
 		{
 			base.StartTouch( other );
@@ -209,50 +225,46 @@ namespace Sandbox
 			if ( other.IsWorld )
 				return;
 
-			Log.Info( other );
+			PortalTraveller traveller = other.Components.Get<PortalTraveller>();
+			if ( traveller != null )
+				OnTriggerEnter( traveller );
 		}
-		public override void Touch( Entity other )
+		public override void EndTouch( Entity other )
 		{
-			base.Touch( other );
-
+			base.EndTouch( other );
 			if ( other.IsWorld )
 				return;
 
-			Log.Info( other );
+			PortalTraveller traveller = other.Components.Get<PortalTraveller>();
+			if ( traveller != null )
+				OnTriggerExit( traveller );
 		}
 
-		private void OnTriggerEnter( PortalTraveller traveller ) {
+
+		public void OnTriggerEnter( PortalTraveller traveller ) {
 			if( !trackedTravellers.Contains(traveller) ) {
+				Log.Error( "entered in " + Name );
 				traveller.EnterPortalThreshold( this );
 				traveller.previousOffsetFromPortal = traveller.Entity.Position - Position;
 				trackedTravellers.Add(traveller);
 			}
 
 		}
-		private void OnTriggerExit( PortalTraveller traveller ) {
+		public void OnTriggerExit( PortalTraveller traveller ) {
 			if ( trackedTravellers.Contains( traveller ) ) {
+				Log.Error( "left " + Name );
 				traveller.ExitPortalThreshold( this );
 				trackedTravellers.Remove( traveller );
 			}
 		}
 
 		public bool IsVisible( ) {
-			return true;
-			// TODO: BBox DOT
-
 			// TODO: PVS check ? 
 			// TODO: AABB check ?
 			// TODO: Trace.Sweep ?
 
-			var delta = Transform.Position - Local.Pawn.Position;
-			var dot = Local.Pawn.EyeRotation.Forward.Dot( delta );
-
-			if ( dot > 0 )
-				return true;
-
-			return false;
+			return true;
 		}
-
 
 	}
 }

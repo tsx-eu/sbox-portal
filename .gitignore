@@ -2,3 +2,5 @@
 obj/
 *bakeresourcecache*
 materials/default/
+*.fgd
+*.vmat_c
