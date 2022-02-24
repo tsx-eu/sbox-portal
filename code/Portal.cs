@@ -5,16 +5,19 @@ using Sandbox;
 
 namespace Sandbox
 {
-	struct PortalRendering {
-		public Material material;
-		public Texture viewTexture;
-		public Texture depthTexture;
+	public partial class PortalRendering : RenderEntity {
+		public Portal source { get; set; }
+		public Portal destination { get; set; }
 
-		public VertexBuffer quad;
+		private Material material;
+		private Texture viewTexture;
+		private Texture depthTexture;
 
-		public Vector3 pos;
-		public Angles ang;
-		public float fov;
+		private VertexBuffer quad;
+
+		private Vector3 pos;
+		private Rotation rot;
+		private float fov;
 
 		private void CreateViewTexture() {
 
@@ -23,7 +26,7 @@ namespace Sandbox
 				depthTexture = Texture.CreateRenderTarget().WithSize( Screen.Width.FloorToInt(), Screen.Height.FloorToInt() ).WithDepthFormat().Create();
 
 				var m = Material.Load( "materials/portal.vmat" );
-				m.OverrideTexture( "g_tColor", viewTexture );
+				m.OverrideTexture( "Color", viewTexture );
 				material = m.CreateCopy();
 			}
 		}
@@ -32,13 +35,15 @@ namespace Sandbox
 			CreateViewTexture();
 
 			pos = GetPosition( portal, player );
-			ang = GetRotation( portal, player ).Angles();
+			rot = GetRotation( portal, player );
 			fov = GetFOV(portal, player);
 
-			if( quad == null ) {
+			// FIXME: Moving Transform.position to portal position cause bug in the renderer.
+
+			if ( quad == null ) {
 				quad = new VertexBuffer();
 				quad.Init( true );
-				quad.AddCube( Vector3.Zero, new Vector3( 128, 4, 128 ), Rotation.Identity );
+				quad.AddCube( portal.Position, new Vector3( 128, 4, 128 ), portal.Rotation );
 			}
 		}
 
@@ -50,44 +55,83 @@ namespace Sandbox
 			return relativePositionToPortal;
 		}
 		public Rotation GetRotation( Portal portal, Entity player ) {
-			var rot = portal.Rotation.Inverse * portal.linkedPortal.Rotation * player.EyeLocalRotation;
+			var rot = portal.Rotation.Inverse * portal.linkedPortal.Rotation * player.EyeRotation;
 			return rot;
 		}
 		public float GetFOV( Portal portal, Entity player ) {
-			var camera = player.Camera as GameCamera;
+			var camera = (player as Pawn).CameraMode as GameCamera;
 			float fov = camera.FieldOfView;
 			var aspect = Screen.Width / Screen.Height;
 			return MathF.Atan( MathF.Tan( fov.DegreeToRadian() * 0.5f ) * (aspect * 0.75f) ).RadianToDegree() * 2.0f;
 		}
 
+		[Event.Frame]
+		public void OnPlayerTick()
+		{
+			EnableDrawing = true;
+			RenderBounds = new BBox( Vector3.One * -99999, Vector3.One * 99999 );
+		}
+
+		public override void DoRender( SceneObject obj )
+		{
+			if ( EnableDrawing == false )
+				return;
+			if ( !source.IsVisible() )
+				return;
+
+			EnableDrawing = false;
+
+			using ( Render.RenderTarget( viewTexture ) )
+			{
+				RenderAttributes attributes = new RenderAttributes();
+				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, 12.0f, 99999.0f );
+			}
+
+			quad.Draw( material );
+		}
 	}
 
 	[Library("portal")]
 	[Hammer.Solid]
-	[Hammer.AutoApplyMaterial("materials/portal.vmat")]
-	public partial class Portal : RenderEntity
+	[Hammer.VisGroup( Hammer.VisGroup.Trigger )]
+	[Hammer.AutoApplyMaterial( "materials/tools/toolstrigger.vmat" )]
+	public partial class Portal : ModelEntity
 	{
-		[Net, Property( "Target name" ), FGDType( "target_destination" )]
+		[Net, Property( "Target" ), FGDType( "target_destination" )]
 		public string targetName { get; set; }
 
-		[Net] public ModelEntity camera { get; set; }
+		[Net] public List<PortalTraveller> trackedTravellers { get; set; } = new List<PortalTraveller>();
 
-		private bool spawnCamera = true;
 		private PortalRendering render;
 		public Portal linkedPortal { get; set; }
 
-		public override void Spawn() {
-			Transmit = TransmitType.Always;
+		private bool spawnCamera = true;
+		private ModelEntity camera { get; set; }
 
-			if( spawnCamera && ( targetName == "orange" || targetName == "gray" ) ) {
+		public override void Spawn()
+		{
+			base.Spawn();
+
+			Transmit = TransmitType.Always;
+			SetupPhysicsFromOBB( PhysicsMotionType.Keyframed, new Vector3( 128, 4, 128 ) / -2, new Vector3( 128, 4, 128 ) / 2 );
+			CollisionGroup = CollisionGroup.Trigger;
+
+			EnableSolidCollisions = false;
+			EnableTouch = true;
+			EnableTouchPersists = true;
+		}
+		public override void ClientSpawn()
+		{
+			base.ClientSpawn();
+
+			if ( spawnCamera && (targetName == "orange" || targetName == "gray") )
+			{
 				camera = new ModelEntity();
+				camera.Name = "debug-camera";
 				camera.SetModel( "models/editor/camera.vmdl" );
-				camera.Transmit = TransmitType.Always;
-				camera.SetParent( this );
+				//camera.SetParent( this );
 				camera.MoveType = MoveType.MOVETYPE_NOCLIP;
-				camera.Scale = 0.5f;
-				camera.GlowActive = false;
-				camera.GlowColor = Color.Red;
+				camera.Scale = 1f;
 			}
 		}
 
@@ -97,13 +141,25 @@ namespace Sandbox
 			if ( !IsServer )
 				return;
 
-			if( linkedPortal == null )
+			if ( linkedPortal == null )
 				linkedPortal = FindByName( targetName ) as Portal;
 
-			if ( linkedPortal != null && camera != null ) {
-				Entity player = Entity.All.Where( i => i is Player ).ToList().FirstOrDefault();
-				camera.Position = render.GetPosition( this, player );
-				camera.Rotation = render.GetRotation( this, player );
+
+			if ( linkedPortal != null ) {
+
+				foreach(var traveller in trackedTravellers ) {
+
+					var offset = traveller.Entity.Position - Position;
+
+					var newSide = Vector3.Forward.Dot( offset );
+					var oldSide = Vector3.Forward.Dot( traveller.previousOffsetFromPortal );
+
+					if( newSide != oldSide ) {
+						traveller.Teleport( this, linkedPortal );
+					}
+
+					traveller.previousOffsetFromPortal = offset;
+				}
 			}
 		}
 
@@ -116,31 +172,87 @@ namespace Sandbox
 			if ( linkedPortal == null ) {
 				linkedPortal = FindByName( targetName ) as Portal;
 				if ( linkedPortal != null )
-					render = new PortalRendering();
+				{
+					render = new PortalRendering {
+						source = this,
+						destination = linkedPortal
+					};
+					render.SetParent( this );
+					//SceneObject.RenderingEnabled = false;
+					EnableDrawing = false;
+				}
 			}
 
 			if ( linkedPortal != null ) {
 				render.Update( this, Local.Pawn );
+			}
 
-				EnableDrawing = true;
-				RenderBounds = new BBox( Vector3.One * -99999, Vector3.One * 99999 );
+			if( camera != null ) {
+				camera.Position = render.GetPosition( this, Local.Pawn );
+				camera.Rotation = render.GetRotation( this, Local.Pawn );
 			}
 		}
 
-		public override void UpdateSceneObject( SceneObject obj )
+
+		public override void EndTouch( Entity other )
 		{
-			base.UpdateSceneObject( obj );
-		}
-		public override void DoRender( SceneObject obj ) {
-			if ( EnableDrawing == false )
+			base.EndTouch( other );
+			if ( other.IsWorld )
 				return;
 
-			EnableDrawing = false;
-			using ( Render.RenderTarget( render.viewTexture ) ) {
-				Render.DrawScene( render.viewTexture, render.depthTexture, render.viewTexture.Size, obj.World, render.pos, render.ang, render.fov, default, default, 12.0f, 99999.0f );
-			}
-			
-			render.quad.Draw( render.material );
+			Log.Info( other );
 		}
+		public override void StartTouch( Entity other )
+		{
+			base.StartTouch( other );
+
+			if ( other.IsWorld )
+				return;
+
+			Log.Info( other );
+		}
+		public override void Touch( Entity other )
+		{
+			base.Touch( other );
+
+			if ( other.IsWorld )
+				return;
+
+			Log.Info( other );
+		}
+
+		private void OnTriggerEnter( PortalTraveller traveller ) {
+			if( !trackedTravellers.Contains(traveller) ) {
+				traveller.EnterPortalThreshold( this );
+				traveller.previousOffsetFromPortal = traveller.Entity.Position - Position;
+				trackedTravellers.Add(traveller);
+			}
+
+		}
+		private void OnTriggerExit( PortalTraveller traveller ) {
+			if ( trackedTravellers.Contains( traveller ) ) {
+				traveller.ExitPortalThreshold( this );
+				trackedTravellers.Remove( traveller );
+			}
+		}
+
+		public bool IsVisible( ) {
+			return true;
+			// TODO: BBox DOT
+
+			// TODO: PVS check ? 
+			// TODO: AABB check ?
+			// TODO: Trace.Sweep ?
+
+			var delta = Transform.Position - Local.Pawn.Position;
+			var dot = Local.Pawn.EyeRotation.Forward.Dot( delta );
+
+			if ( dot > 0 )
+				return true;
+
+			return false;
+		}
+
+
 	}
 }
