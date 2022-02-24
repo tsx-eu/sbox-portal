@@ -4,36 +4,29 @@ namespace Sandbox
 {
 	partial class Pawn : Player
 	{
-		/// <summary>
-		/// Called when the entity is first created 
-		/// </summary>
-		public override void Spawn()
-		{
-			base.Spawn();
 
+		public override void Respawn()
+		{
+			SetModel( "models/citizen/citizen.vmdl" );
+
+			Controller = new WalkController();
+			Animator = new StandardPlayerAnimator();
+			CameraMode = new GameCamera();
+
+			Components.Add( new PortalTraveller() );
+
+			EnableAllCollisions = true;
 			EnableDrawing = true;
 			EnableHideInFirstPerson = true;
 			EnableShadowInFirstPerson = true;
 
-			Controller = new WalkController();
-			Camera = new GameCamera();
+			base.Respawn();
 		}
 
-		/// <summary>
-		/// Called every tick, clientside and serverside.
-		/// </summary>
 		public override void Simulate( Client cl )
 		{
 			base.Simulate( cl );
-
-		}
-
-		/// <summary>
-		/// Called every frame on the client
-		/// </summary>
-		public override void FrameSimulate( Client cl )
-		{
-			base.FrameSimulate( cl );
+			SimulateActiveChild( cl, ActiveChild );
 		}
 	}
 }

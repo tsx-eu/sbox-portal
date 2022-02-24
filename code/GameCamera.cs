@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Sandbox
 {
-	public class GameCamera : Camera
+	public class GameCamera : CameraMode
 	{
 		Vector3 lastPos;
 
