@@ -14,28 +14,18 @@
 ]
 
 //
-// Sandbox2.Portal
-//
-@SolidClass base(BaseProperties_local_portal) 
-metadata
-{
-	auto_apply_material = "materials/portal.vmat"
-}
-= portal : ""
-[
-	target_name(target_destination) : "Target Name" :  : ""
-]
-
-//
 // Sandbox.Portal
 //
-@SolidClass base(BaseProperties_local_portal) 
+@SolidClass base(BaseProperties_local_portal) tags( Trigger ) 
 metadata
 {
-	auto_apply_material = "materials/portal.vmat"
+	auto_apply_material = "materials/tools/toolstrigger.vmat"
 }
 = portal : ""
 [
-	target_name(target_destination) : "Target Name" :  : ""
+	target(target_destination) : "Target Name" :  : ""
+	enable_shadows(boolean) { group = "Rendering" } : "Shadow Casting" : 1 : "Whether this entity should cast shadows or not"
+
+	input SetColor(string) : "Sets the color of this entity. Format is '255 255 255 255'."
 ]
 

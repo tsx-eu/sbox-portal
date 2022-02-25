@@ -48,7 +48,7 @@ namespace Sandbox
 		}
 
 		private float GetFOV( Entity player ) {
-			var camera = (player as Pawn).CameraMode as GameCamera;
+			var camera = (player as PortalPlayer).CameraMode as PortalCamera;
 			float fov = camera.FieldOfView;
 			var aspect = Screen.Width / Screen.Height;
 			return MathF.Atan( MathF.Tan( fov.DegreeToRadian() * 0.5f ) * (aspect * 0.75f) ).RadianToDegree() * 2.0f;
@@ -192,6 +192,14 @@ namespace Sandbox
 			if( camera != null ) {
 				camera.Position = GetCameraPosition( Local.Pawn );
 				camera.Rotation = GetRotation( Local.Pawn );
+			}
+		}
+
+		[Event.PreRender]
+		public void Render() {
+			if ( linkedPortal != null ) {
+				render.Update();
+				checkTraversal();
 			}
 		}
 

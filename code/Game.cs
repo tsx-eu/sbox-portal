@@ -16,7 +16,7 @@ namespace Sandbox
 		{
 			base.ClientJoined( client );
 
-			var player = new Pawn();
+			var player = new PortalPlayer();
 			client.Pawn = player;
 
 			player.Respawn();

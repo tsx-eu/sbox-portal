@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace Sandbox
 {
-	public partial class GameCamera : CameraMode
+	public partial class PortalCamera : CameraMode
 	{
 		Vector3 lastPos;
 
-		public GameCamera() {
+		public PortalCamera() {
 
 		}
 
-		public GameCamera(Vector3 pos, Rotation rot)
+		public PortalCamera(Vector3 pos, Rotation rot)
 		{
 			Position = pos;
 			Rotation = rot;
