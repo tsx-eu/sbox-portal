@@ -74,6 +74,8 @@ PS
 	CreateTexture2D( g_tColor ) < Channel( RGBA, None( TextureColor ), Srgb ); OutputFormat( DXT5 ); SrgbRead( true ); >;
 	TextureAttribute( RepresentativeTexture, g_tColor );
 	
+	RenderState( CullMode, NONE );
+	
 	PS_OUTPUT MainPs( PS_INPUT i )
 	{
 		

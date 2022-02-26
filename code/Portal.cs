@@ -18,6 +18,7 @@ namespace Sandbox
 		private Vector3 pos;
 		private Rotation rot;
 		private float fov;
+		private float nearClipPlane;
 
 		private void CreateViewTexture() {
 
@@ -37,14 +38,9 @@ namespace Sandbox
 			pos = source.GetCameraPosition( Local.Pawn );
 			rot = source.GetRotation( Local.Pawn );
 			fov = GetFOV( Local.Pawn );
+			nearClipPlane = ((Local.Pawn as PortalPlayer).CameraMode as PortalCamera).ZNear;
 
 			// FIXME: Moving Transform.position to portal position cause bug in the renderer.
-
-			if ( quad == null ) {
-				quad = new VertexBuffer();
-				quad.Init( true );
-				quad.AddCube( source.Position, new Vector3( 128, 4, 128 ), source.Rotation );
-			}
 		}
 
 		private float GetFOV( Entity player ) {
@@ -73,10 +69,30 @@ namespace Sandbox
 			using ( Render.RenderTarget( viewTexture ) )
 			{
 				RenderAttributes attributes = new RenderAttributes();
-				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, 12.0f, 99999.0f );
+				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearClipPlane, 99999.0f );
 			}
 
-			quad.Draw( material );
+			Vector3 localPosition;
+			float localWidth = getPortalLocalPosition( out localPosition );
+
+			var vb = Render.GetDynamicVB();
+			vb.Init( true );
+			vb.AddCube( source.Position + localPosition, new Vector3( 128, localWidth, 128 ), source.Rotation );
+			vb.Draw( material );
+		}
+
+		private float getPortalLocalPosition(out Vector3 localPosition )
+		{
+			var aspect = Screen.Width / Screen.Height;
+
+			float halfHeight = nearClipPlane * MathF.Tan( fov.DegreeToRadian() * 0.5f );
+			float halfWidth = halfHeight * aspect;
+			float dstToNearClipPlane = new Vector3( halfWidth, nearClipPlane, halfHeight ).Length;
+
+			bool camFacingsameDirAsPortal = Vector3.Dot( source.Rotation.Left, source.Transform.Position - Local.Pawn.Transform.Position ) > 0;
+
+			localPosition = source.Rotation.Left * dstToNearClipPlane * 1f * ( camFacingsameDirAsPortal ? 1 : -1);
+			return dstToNearClipPlane;
 		}
 	}
 
@@ -94,7 +110,7 @@ namespace Sandbox
 		private PortalRendering render;
 		public Portal linkedPortal { get; set; }
 
-		private bool spawnCamera = true;
+		private bool spawnCamera = false;
 		private ModelEntity camera { get; set; }
 
 		public override void Spawn()
@@ -118,14 +134,13 @@ namespace Sandbox
 				camera = new ModelEntity();
 				camera.Name = "debug-camera";
 				camera.SetModel( "models/editor/camera.vmdl" );
-				//camera.SetParent( this );
 				camera.MoveType = MoveType.MOVETYPE_NOCLIP;
 				camera.Scale = 1f;
 			}
 		}
 
 		[Event.Physics.PostStep]
-		private void checkTraversal() {
+		public void CheckTraversal() {
 			if ( linkedPortal == null )
 				return;
 
@@ -134,19 +149,19 @@ namespace Sandbox
 				var traveller = trackedTravellers[i];
 				var transform = Transform.Rotation.Left;
 
-				var offset = (traveller.Entity.Position - Position);
+				var offset = (traveller.Entity.EyePosition - Position);
 
 				var newSide = Math.Sign( Vector3.Dot( offset, transform ) );
 				var oldSide = Math.Sign( Vector3.Dot( traveller.previousOffsetFromPortal, transform ) );
 
 				if ( newSide != oldSide )
 				{
-					var pos = this.GetPosition( traveller.Entity );
-					var rot = this.GetRotation( traveller.Entity );
+					var pos = GetPosition( traveller.Entity );
+					var rot = GetRotation( traveller.Entity );
 
 					traveller.Teleport( pos, rot );
 					linkedPortal.OnTriggerEnter( traveller );
-					this.trackedTravellers.RemoveAt( i );
+					trackedTravellers.RemoveAt( i );
 					i--;
 					continue;
 				}

@@ -35,6 +35,7 @@ namespace Sandbox
 			Position = pawn.EyePosition;
 			Rotation = pawn.EyeRotation;
 			FieldOfView = 80.0f;
+			ZNear = 1.0f;
 
 			lastPos = Position;
 		}

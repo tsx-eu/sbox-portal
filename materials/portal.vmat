@@ -4,15 +4,8 @@ Layer0
 {
 	shader "portal.vfx"
 
-	//---- Disable Depth ----
-	F_DISABLE_DEPTH 1
-
 	//---- Rendering ----
 	F_RENDER_BACKFACES 1
-
-	//---- Z-Buffering ----
-	F_DISABLE_Z_BUFFERING 1
-	F_DISABLE_Z_PREPASS 1
 
 	//---- Textures ----
 	TextureColor "[0.862745 0.078431 0.235294 1.000000]"
