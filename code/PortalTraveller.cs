@@ -5,22 +5,19 @@ namespace Sandbox
 	{
 		public Vector3 previousOffsetFromPortal { get; set; }
 
-		public virtual void Teleport(Portal from, Portal to) {
-			var pos = from.GetPosition( Entity );
-			var rot = from.GetRotation( Entity );
-
+		public void Teleport(Vector3 pos, Rotation rot) {
 			Entity.Position = pos;
 
 			if ( Entity is PortalPlayer player )
-				player.Teleport( pos, rot );
+				player.SetRotation( rot );
 			else
 				Entity.Rotation = rot;
 		}
 
-		public virtual void EnterPortalThreshold(Portal portal) {
+		public void EnterPortalThreshold(Portal portal) {
 
 		}
-		public virtual void ExitPortalThreshold(Portal portal) {
+		public void ExitPortalThreshold(Portal portal) {
 
 		}
 

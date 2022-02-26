@@ -8,10 +8,8 @@ namespace Sandbox
 		private bool hasForcedRotationInput = false;
 		private Rotation forceRotation;
 
-		public void Teleport( Vector3 position, Rotation rotation ) {
-			ResetInterpolation();
-			Position = position;
-
+		[ClientRpc]
+		public void SetRotation( Rotation rotation ) {
 			forceRotation = rotation;
 			hasForcedRotationInput = true;
 		}

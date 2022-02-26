@@ -124,9 +124,8 @@ namespace Sandbox
 			}
 		}
 
+		[Event.Physics.PostStep]
 		private void checkTraversal() {
-
-
 			if ( linkedPortal == null )
 				return;
 
@@ -142,7 +141,10 @@ namespace Sandbox
 
 				if ( newSide != oldSide )
 				{
-					traveller.Teleport( this, linkedPortal );
+					var pos = this.GetPosition( traveller.Entity );
+					var rot = this.GetRotation( traveller.Entity );
+
+					traveller.Teleport( pos, rot );
 					linkedPortal.OnTriggerEnter( traveller );
 					this.trackedTravellers.RemoveAt( i );
 					i--;
@@ -163,7 +165,6 @@ namespace Sandbox
 
 			if ( linkedPortal == null )
 				linkedPortal = FindByName( targetName ) as Portal;
-			checkTraversal();
 		}
 
 		[Event.Frame]
@@ -186,7 +187,6 @@ namespace Sandbox
 
 			if ( linkedPortal != null ) {
 				render.Update();
-				checkTraversal();
 			}
 
 			if( camera != null ) {
@@ -199,7 +199,6 @@ namespace Sandbox
 		public void Render() {
 			if ( linkedPortal != null ) {
 				render.Update();
-				checkTraversal();
 			}
 		}
 
