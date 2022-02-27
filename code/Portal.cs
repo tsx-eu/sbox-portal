@@ -69,7 +69,9 @@ namespace Sandbox
 			using ( Render.RenderTarget( viewTexture ) )
 			{
 				RenderAttributes attributes = new RenderAttributes();
-				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearClipPlane, 99999.0f );
+				float nearZ = SetClipPlane( attributes );
+				nearZ = 0.1f;
+				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 99999.0f );
 			}
 
 			Vector3 localPosition;
@@ -79,6 +81,20 @@ namespace Sandbox
 			vb.Init( true );
 			vb.AddCube( source.Position + localPosition, new Vector3( 128, localWidth, 128 ), source.Rotation );
 			vb.Draw( material );
+		}
+
+		public float SetClipPlane( RenderAttributes attrributes )
+		{
+			Plane clipPlane = new Plane( destination.Transform.Position, destination.Transform.Rotation.Right );
+			string k = "EnableClipPlane";
+			bool value = true;
+			attrributes.Set( in k, in value );
+
+			k = "ClipPlane0";
+			Vector4 value2 = new Vector4( in clipPlane.Normal, clipPlane.Distance );
+			attrributes.Set( in k, in value2 );
+
+			return (destination.Transform.Position - pos).Length;
 		}
 
 		private float getPortalLocalPosition(out Vector3 localPosition )
