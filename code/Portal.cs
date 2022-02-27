@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using Sandbox;
 
-namespace Sandbox
+namespace Portal
 {
 	public partial class PortalRendering : RenderEntity {
 		public Portal source { get; set; }
@@ -69,8 +68,8 @@ namespace Sandbox
 			using ( Render.RenderTarget( viewTexture ) )
 			{
 				RenderAttributes attributes = new RenderAttributes();
-				float nearZ = SetClipPlane( attributes );
-				nearZ = 0.1f;
+				//float nearZ = SetClipPlane( attributes );
+				float nearZ = 0.1f;
 				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 99999.0f );
 			}
 

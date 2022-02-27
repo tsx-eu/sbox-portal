@@ -1,9 +1,7 @@
 ﻿
 using Sandbox;
-using System;
-using System.Linq;
 
-namespace Sandbox
+namespace Portal
 {
 	public partial class Gamemode : Sandbox.Game
 	{

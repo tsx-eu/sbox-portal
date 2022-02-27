@@ -1,8 +1,8 @@
 ﻿using Sandbox;
 
-namespace Sandbox
+namespace Portal
 {
-	partial class PortalPlayer : Player
+	public partial class PortalPlayer : Player, ButtonTriggerable
 	{
 
 		private bool hasForcedRotationInput = false;
@@ -29,7 +29,7 @@ namespace Sandbox
 			SetModel( "models/citizen/citizen.vmdl" );
 
 			Controller = new WalkController();
-			Animator = new StandardPlayerAnimator();
+			Animator = new PortalAnimator();
 			CameraMode = new PortalCamera();
 
 			Components.Add( new PortalTraveller() );
