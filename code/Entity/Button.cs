@@ -9,6 +9,8 @@ namespace Portal {
 	public partial class Button : AnimEntity {
 		private ButtonTrigger trigger;
 
+		protected Output OnPress { get; set; }
+		protected Output OnRelease { get; set; }
 
 		public override void Spawn() {
 			base.Spawn();
@@ -21,13 +23,17 @@ namespace Portal {
 			trigger.Bind();
 		}
 
-		public void OnPress() {
+		public void Press() {
 			SetMaterialGroup( "on" );
 			SetAnimParameter( "enable", true );
+
+			OnPress.Fire(this);
 		}
-		public void OnRelease() {
+		public void Release() {
 			SetMaterialGroup( "default" );
 			SetAnimParameter( "enable", false );
+
+			OnRelease.Fire( this );
 		}
 	}
 
@@ -67,7 +73,7 @@ namespace Portal {
 
 			if ( toucher is ButtonTriggerable triggerable ) {
 				if( active.Count == 0 )
-					button.OnPress();
+					button.Press();
 
 				if( !active.Contains(triggerable) )
 					active.Add( triggerable );
@@ -83,7 +89,7 @@ namespace Portal {
 				active.Remove( triggerable );
 
 				if ( active.Count == 0 )
-					button.OnRelease();
+					button.Release();
 			}
 		}
 	}

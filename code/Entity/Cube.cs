@@ -7,6 +7,7 @@ namespace Portal
 	[Hammer.Model( Model = "models/props/metal_box.vmdl" )]
 	public partial class Cube : Prop, ButtonTriggerable
 	{
+
 		public override void Spawn()
 		{
 			base.Spawn();
@@ -14,5 +15,6 @@ namespace Portal
 			SetupPhysicsFromModel( PhysicsMotionType.Keyframed );
 			PhysicsEnabled = true;
 		}
+
 	}
 }
