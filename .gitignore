@@ -4,3 +4,7 @@ obj/
 materials/default/
 *.fgd
 *.vmat_c
+*.vpk
+materials/**/
+models/**/
+sounds/**/

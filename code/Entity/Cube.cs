@@ -12,7 +12,7 @@ namespace Portal
 		{
 			base.Spawn();
 			SetModel( "models/props/metal_box.vmdl" );
-			SetupPhysicsFromModel( PhysicsMotionType.Keyframed );
+			SetupPhysicsFromModel( PhysicsMotionType.Dynamic );
 			PhysicsEnabled = true;
 		}
 

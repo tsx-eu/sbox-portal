@@ -1,0 +1,10 @@
+// THIS FILE IS AUTO-GENERATED
+
+Layer0
+{
+	shader "portal_slicer.vfx"
+
+	ClippingNormal "[0.000 0.000 0.000]"
+	ClippingOffset "[0.000 0.000 0.000]"
+	CutColorDistance "0.000"
+}
