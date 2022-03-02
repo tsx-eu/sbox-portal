@@ -5,8 +5,9 @@ namespace Portal
 
 	[Library( "portal_cube" )]
 	[Hammer.Model( Model = "models/props/metal_box.vmdl" )]
-	public partial class Cube : Prop, ButtonTriggerable
+	public partial class Cube : Prop, IButtonTriggerable, IPlayerGrabable
 	{
+		public PortalPlayer GrabbedBy { get; set; }
 
 		public override void Spawn()
 		{

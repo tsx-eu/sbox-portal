@@ -2,7 +2,7 @@
 
 namespace Portal
 {
-	public partial class PortalPlayer : Player, ButtonTriggerable
+	public partial class PortalPlayer : Player, IButtonTriggerable
 	{
 
 		private bool hasForcedRotationInput = false;
@@ -46,6 +46,15 @@ namespace Portal
 		{
 			base.Simulate( cl );
 			SimulateActiveChild( cl, ActiveChild );
+
+			if ( Host.IsServer ) {
+				if ( Input.Pressed( InputButton.Use ) )
+					TryStartGrab();
+				UpdateGrab();
+				if ( Input.Released( InputButton.Use ) )
+					StopGrab();
+			}
 		}
+
 	}
 }

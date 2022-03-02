@@ -4,6 +4,10 @@ using Sandbox;
 
 namespace Portal {
 
+	public interface IButtonTriggerable
+	{
+	}
+
 	[Library( "portal_button" )]
 	[Hammer.Model( Model = "models/props/button_base.vmdl" )]
 	public partial class Button : AnimEntity {
@@ -37,12 +41,9 @@ namespace Portal {
 		}
 	}
 
-	public interface ButtonTriggerable {
-	}
-
 	partial class ButtonTrigger : BaseTrigger
 	{
-		private List<ButtonTriggerable> active = new List<ButtonTriggerable>();
+		private List<IButtonTriggerable> active = new List<IButtonTriggerable>();
 		private Button button;
 		private const float ratio = 0.6f;
 
@@ -71,7 +72,7 @@ namespace Portal {
 			if ( toucher.IsWorld || button == null )
 				return;
 
-			if ( toucher is ButtonTriggerable triggerable ) {
+			if ( toucher is IButtonTriggerable triggerable ) {
 				if( active.Count == 0 )
 					button.Press();
 
@@ -85,7 +86,7 @@ namespace Portal {
 			if ( toucher.IsWorld || button == null )
 				return;
 
-			if ( toucher is ButtonTriggerable triggerable ) {
+			if ( toucher is IButtonTriggerable triggerable ) {
 				active.Remove( triggerable );
 
 				if ( active.Count == 0 )
