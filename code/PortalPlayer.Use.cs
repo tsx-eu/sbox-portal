@@ -27,10 +27,13 @@ namespace Portal
 				.Run();
 
 			if ( !tr.Hit || !tr.Entity.IsValid() || tr.Entity.IsWorld || tr.StartedSolid )
+			{
+				Log.Info( "invalid" );
 				return;
+			}
 
 			var ent = tr.Entity as IPlayerGrabable;
-			if ( ent.GrabbedBy != null )
+			if( ent == null || ent.GrabbedBy != null )
 				return;
 
 			StartGrab( ent );
@@ -39,9 +42,10 @@ namespace Portal
 		private void StartGrab( IPlayerGrabable grab )
 		{
 			var ent = grab as ModelEntity;
-			oldMoveType = ent.MoveType;
 			ent.PhysicsBody.AutoSleep = false;
-			ent.MoveType = MoveType.MOVETYPE_FLY;
+			ent.PhysicsBody.Sleeping = false;
+			ent.PhysicsBody.GravityEnabled = false;
+			ent.Position = ent.Position;
 
 			GrabbedEntity = grab;
 			GrabbedEntity.GrabbedBy = this;
@@ -54,6 +58,7 @@ namespace Portal
 			var ent = GrabbedEntity as ModelEntity;
 			ent.MoveType = oldMoveType;
 			ent.PhysicsBody.AutoSleep = true;
+			ent.PhysicsBody.GravityEnabled = true;
 
 			GrabbedEntity.GrabbedBy = null;
 			GrabbedEntity = null;
