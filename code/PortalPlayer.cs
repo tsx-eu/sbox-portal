@@ -49,10 +49,8 @@ namespace Portal
 
 			if ( Host.IsServer ) {
 				if ( Input.Pressed( InputButton.Use ) )
-					TryStartGrab();
+					ToggleGrab();
 				UpdateGrab();
-				if ( Input.Released( InputButton.Use ) )
-					StopGrab();
 			}
 		}
 

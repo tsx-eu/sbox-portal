@@ -10,11 +10,19 @@ namespace Portal
 	{
 		public IPlayerGrabable GrabbedEntity { get; set; }
 		public bool Grabbing { get { return GrabbedEntity != null; } }
-		private MoveType oldMoveType;
 
 		private const float MinGrabDistance = 32.0f;
 		private const float MaxGrabDistance = 64.0f;
 		private const float GrabVelocityFactor = 32.0f;
+
+		public void ToggleGrab()
+		{
+			if ( !Grabbing )
+				TryStartGrab();
+			else
+				StopGrab();
+		}
+
 
 		public void TryStartGrab()
 		{
@@ -27,10 +35,7 @@ namespace Portal
 				.Run();
 
 			if ( !tr.Hit || !tr.Entity.IsValid() || tr.Entity.IsWorld || tr.StartedSolid )
-			{
-				Log.Info( "invalid" );
 				return;
-			}
 
 			var ent = tr.Entity as IPlayerGrabable;
 			if( ent == null || ent.GrabbedBy != null )
@@ -49,6 +54,7 @@ namespace Portal
 
 			GrabbedEntity = grab;
 			GrabbedEntity.GrabbedBy = this;
+			Log.Info( "started grab" );
 		}
 		public void StopGrab()
 		{
@@ -56,12 +62,15 @@ namespace Portal
 				return;
 
 			var ent = GrabbedEntity as ModelEntity;
-			ent.MoveType = oldMoveType;
-			ent.PhysicsBody.AutoSleep = true;
-			ent.PhysicsBody.GravityEnabled = true;
+			if ( ent.IsValid() ) {
+				ent.PhysicsBody.AutoSleep = true;
+				ent.PhysicsBody.GravityEnabled = true;
 
-			GrabbedEntity.GrabbedBy = null;
+				GrabbedEntity.GrabbedBy = null;
+			}
+
 			GrabbedEntity = null;
+			Log.Info( "stopped grab" );
 		}
 
 
