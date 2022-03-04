@@ -8,7 +8,11 @@ namespace Portal
 	{
 		public override string ViewModelPath => "weapons/rust_pistol/v_rust_pistol.vmdl";
 		public PickupTrigger PickupTrigger { get; set; }
+
 		[Net] public PortalGunProjectile projectile { get; set; }
+		[Net] public PortalEntrance PortalEntrance { get; set; }
+		[Net] public PortalEntrance PortalExit { get; set; }
+
 
 		public override void Spawn() {
 			base.Spawn();
@@ -50,7 +54,7 @@ namespace Portal
 
 			if ( Host.IsServer ) {
 				projectile = new PortalGunProjectile();
-				projectile.Fire( this );
+				projectile.Fire( this, 0 );
 			}
 		}
 
@@ -61,13 +65,38 @@ namespace Portal
 		public override void AttackSecondary() {
 			base.AttackSecondary();
 
+			if ( Host.IsServer ) {
+				projectile = new PortalGunProjectile();
+				projectile.Fire( this, 1 );
+			}
+		}
+
+		public void OnProjectileHit(CollisionEventData data, int type) {
+			var portal = new PortalEntrance();
+			portal.Position = data.Position;
+			portal.Rotation = Rotation.LookAt( data.Normal ) * Rotation.From( -90, 0, 0 );
+			portal.SetType( type );
+
+			if( type == 0 ) {
+				if ( PortalEntrance != null && PortalEntrance.IsValid() )
+					PortalEntrance.Delete();
+
+				PortalEntrance = portal;
+			}
+			else if( type == 1 ) {
+				if ( PortalExit != null && PortalExit.IsValid() )
+					PortalExit.Delete();
+
+				PortalExit = portal;
+			}
 		}
 	}
 
-	public partial class PortalGunProjectile : ModelEntity
-	{
+	public partial class PortalGunProjectile : ModelEntity {
 		private const float Speed = 1024.0f;
 		private const float LifeTime = 1.0f;
+
+		[Net] public int Type { get; set; }
 
 		public override void Spawn()
 		{
@@ -79,11 +108,12 @@ namespace Portal
 			RemoveCollisionLayer( CollisionLayer.Player );
 			PhysicsBody.GravityEnabled = false;
 		}
-		public void Fire( BaseWeapon weapon ) {			
-			Owner = weapon.Owner;
+		public void Fire( BaseWeapon weapon, int type ) {			
+			Owner = weapon;
 			Position = weapon.GetAttachment( "muzzle" ).Value.Position;
-			Rotation = Owner.EyeRotation;
+			Rotation = weapon.Owner.EyeRotation;
 			Velocity = Rotation.Forward * Speed;
+			Type = type;
 
 			DeleteAsync( LifeTime );
 		}
@@ -91,8 +121,31 @@ namespace Portal
 		protected override void OnPhysicsCollision( CollisionEventData eventData )
 		{
 			base.OnPhysicsCollision( eventData );
-			if ( eventData.Entity.IsWorld )
+			if ( eventData.Entity.IsWorld ) {
+				var weapon = Owner as PortalGun;
+				weapon.OnProjectileHit( eventData, Type );
 				Delete();
+			}
+		}
+	}
+
+	public partial class PortalEntrance : ModelEntity {
+
+		public override void Spawn() {
+			base.Spawn();
+
+			SetModel( "models/vrportal/portalshape.vmdl" );
+			CollisionGroup = CollisionGroup.Trigger;
+
+			EnableSolidCollisions = false;
+			EnableTouch = true;
+			EnableTouchPersists = true;
+			EnableShadowCasting = false;
+		}
+
+		// TODO: ENUM
+		public void SetType(int type) {
+			SetMaterialGroup( type );
 		}
 	}
 }
