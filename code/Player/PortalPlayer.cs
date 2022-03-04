@@ -8,6 +8,12 @@ namespace Portal
 		private bool hasForcedRotationInput = false;
 		private Rotation forceRotation;
 
+
+		public PortalPlayer() {
+			Inventory = new BaseInventory( this );
+		}
+
+
 		[ClientRpc]
 		public void SetRotation( Rotation rotation ) {
 			forceRotation = rotation;
@@ -38,6 +44,8 @@ namespace Portal
 			EnableDrawing = true;
 			EnableHideInFirstPerson = true;
 			EnableShadowInFirstPerson = true;
+
+			Inventory.Add( new PortalGun(), true);
 
 			base.Respawn();
 		}

@@ -30,6 +30,16 @@ metadata
 ]
 
 //
+// Portal.PortalGun
+//
+@PointClass base(BaseProperties_local_portal) = portal_gun : ""
+[
+	enable_shadows(boolean) { group = "Rendering" } : "Shadow Casting" : 1 : "Whether this entity should cast shadows or not"
+
+	input SetColor(string) : "Sets the color of this entity. Format is '255 255 255 255'."
+]
+
+//
 // Portal.Button
 //
 @PointClass base(BaseProperties_local_portal) model() = portal_button : ""
