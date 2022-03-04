@@ -7,8 +7,8 @@ namespace Portal
 	public partial class PortalGun : BaseWeapon
 	{
 		public override string ViewModelPath => "weapons/rust_pistol/v_rust_pistol.vmdl";
-
-		public PickupTrigger PickupTrigger { get; protected set; }
+		public PickupTrigger PickupTrigger { get; set; }
+		[Net] public PortalGunProjectile projectile { get; set; }
 
 		public override void Spawn() {
 			base.Spawn();
@@ -43,12 +43,15 @@ namespace Portal
 		}
 
 		public override bool CanPrimaryAttack() {
-			return Input.Pressed( InputButton.Attack1 );
+			return Input.Pressed( InputButton.Attack1 ) && (projectile == null || !projectile.IsValid());
 		}
 		public override void AttackPrimary() {
 			base.AttackPrimary();
 
-			Log.Info( "primary" );
+			if ( Host.IsServer ) {
+				projectile = new PortalGunProjectile();
+				projectile.Fire( this );
+			}
 		}
 
 
@@ -58,7 +61,38 @@ namespace Portal
 		public override void AttackSecondary() {
 			base.AttackSecondary();
 
-			Log.Info( "secondary" );
+		}
+	}
+
+	public partial class PortalGunProjectile : ModelEntity
+	{
+		private const float Speed = 1024.0f;
+		private const float LifeTime = 1.0f;
+
+		public override void Spawn()
+		{
+			MoveType = MoveType.Physics;
+			PhysicsEnabled = true;
+			UsePhysicsCollision = true;
+			SetupPhysicsFromSphere( PhysicsMotionType.Dynamic, Vector3.Zero, 2.0f );
+			CollisionGroup = CollisionGroup.Weapon;
+			RemoveCollisionLayer( CollisionLayer.Player );
+			PhysicsBody.GravityEnabled = false;
+		}
+		public void Fire( BaseWeapon weapon ) {			
+			Owner = weapon.Owner;
+			Position = weapon.GetAttachment( "muzzle" ).Value.Position;
+			Rotation = Owner.EyeRotation;
+			Velocity = Rotation.Forward * Speed;
+
+			DeleteAsync( LifeTime );
+		}
+
+		protected override void OnPhysicsCollision( CollisionEventData eventData )
+		{
+			base.OnPhysicsCollision( eventData );
+			if ( eventData.Entity.IsWorld )
+				Delete();
 		}
 	}
 }
