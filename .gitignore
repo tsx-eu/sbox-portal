@@ -8,3 +8,5 @@ materials/default/
 materials/**/
 models/**/
 sounds/**/
+particles/**
+maps/**
