@@ -54,7 +54,6 @@ namespace Portal
 
 			GrabbedEntity = grab;
 			GrabbedEntity.GrabbedBy = this;
-			Log.Info( "started grab" );
 		}
 		public void StopGrab()
 		{
@@ -70,7 +69,6 @@ namespace Portal
 			}
 
 			GrabbedEntity = null;
-			Log.Info( "stopped grab" );
 		}
 
 
