@@ -28,16 +28,30 @@ namespace Portal
 				var m = Material.Load( "materials/portal.vmat" );
 				m.OverrideTexture( "Color", viewTexture );
 				material = m.CreateCopy();
+
+				quad = new VertexBuffer();
+				quad.Init( true );
+				foreach ( var v in source.Model.GetVertices() )
+					quad.Add( v.Position );
+				foreach ( var i in source.Model.GetIndices() )
+					quad.AddRawIndex( (int)i );
 			}
 		}
 
+		[Event.PreRender]
 		public void Update() {
 			CreateViewTexture();
+
+			Position = source.Position;
+			Rotation = source.Rotation;
 
 			pos = source.GetCameraPosition( Local.Pawn );
 			rot = source.GetRotation( Local.Pawn );
 			fov = GetFOV( Local.Pawn );
 			nearClipPlane = ((Local.Pawn as PortalPlayer).CameraMode as PortalCamera).ZNear;
+
+			EnableDrawing = true;
+			RenderBounds = new BBox( Vector3.One * -99999, Vector3.One * 99999 );
 
 			// FIXME: Moving Transform.position to portal position cause bug in the renderer.
 		}
@@ -47,13 +61,6 @@ namespace Portal
 			float fov = camera.FieldOfView;
 			var aspect = Screen.Width / Screen.Height;
 			return MathF.Atan( MathF.Tan( fov.DegreeToRadian() * 0.5f ) * (aspect * 0.75f) ).RadianToDegree() * 2.0f;
-		}
-
-		[Event.Frame]
-		public void OnPlayerTick()
-		{
-			EnableDrawing = true;
-			RenderBounds = new BBox( Vector3.One * -99999, Vector3.One * 99999 );
 		}
 
 		public override void DoRender( SceneObject obj )
@@ -73,13 +80,10 @@ namespace Portal
 				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 99999.0f );
 			}
 
-			Vector3 localPosition;
-			float localWidth = getPortalLocalPosition( out localPosition );
+			//Vector3 localPosition;
+			//float localWidth = getPortalLocalPosition( out localPosition );
 
-			var vb = Render.GetDynamicVB();
-			vb.Init( true );
-			vb.AddCube( source.Position + localPosition, new Vector3( 128, localWidth, 128 ), source.Rotation );
-			vb.Draw( material );
+			quad.Draw( material );
 		}
 
 		public float SetClipPlane( RenderAttributes attrributes )
@@ -94,6 +98,16 @@ namespace Portal
 			attrributes.Set( in k, in value2 );
 
 			return (destination.Transform.Position - pos).Length;
+		}
+		protected static Vector3 GetCircleNormal( int i, int tessellation )
+		{
+			var angle = i * (float)Math.PI * 2 / tessellation;
+
+			var dx = (float)Math.Cos( angle );
+			var dy = (float)Math.Sin( angle );
+
+			var v = new Vector3( dx, dy, 0 );
+			return v.Normal;
 		}
 
 		private float getPortalLocalPosition(out Vector3 localPosition )
@@ -112,9 +126,7 @@ namespace Portal
 	}
 
 	[Library("portal")]
-	[Hammer.Solid]
-	[Hammer.VisGroup( Hammer.VisGroup.Trigger )]
-	[Hammer.AutoApplyMaterial( "materials/tools/toolstrigger.vmat" )]
+	[Hammer.Model( Model = "models/vrportal/portalshape.vmdl" )]
 	public partial class Portal : ModelEntity
 	{
 		[Net, Property( "Target" ), FGDType( "target_destination" )]
@@ -123,6 +135,7 @@ namespace Portal
 		public List<PortalTraveller> trackedTravellers { get; set; } = new List<PortalTraveller>();
 
 		private PortalRendering render;
+		[Net]
 		public Portal linkedPortal { get; set; }
 
 		private bool spawnCamera = false;
@@ -133,7 +146,8 @@ namespace Portal
 			base.Spawn();
 
 			Transmit = TransmitType.Always;
-			SetupPhysicsFromOBB( PhysicsMotionType.Keyframed, new Vector3( 128, 4, 128 ) / -2, new Vector3( 128, 4, 128 ) / 2 );
+			SetModel( "models/vrportal/portalshape.vmdl" );
+			SetupPhysicsFromModel( PhysicsMotionType.Keyframed );
 			CollisionGroup = CollisionGroup.Trigger;
 
 			EnableSolidCollisions = false;
@@ -187,6 +201,7 @@ namespace Portal
 			}
 		}
 
+
 		[Event.Tick]
 		public void OnServerTick()
 		{
@@ -202,17 +217,13 @@ namespace Portal
 			if ( !IsClient )
 				return;
 
-			if ( linkedPortal == null ) {
-				linkedPortal = FindByName( targetName ) as Portal;
-				if ( linkedPortal != null )
-				{
-					render = new PortalRendering {
-						source = this,
-						destination = linkedPortal
-					};
-					render.SetParent( this );
-					EnableDrawing = false;
-				}
+			if ( linkedPortal != null && render == null ) {
+				render = new PortalRendering {
+					source = this,
+					destination = linkedPortal
+				};
+				render.SetParent( this );
+				EnableDrawing = false;
 			}
 
 			if ( linkedPortal != null ) {
@@ -222,13 +233,6 @@ namespace Portal
 			if( camera != null ) {
 				camera.Position = GetCameraPosition( Local.Pawn );
 				camera.Rotation = GetRotation( Local.Pawn );
-			}
-		}
-
-		[Event.PreRender]
-		public void Render() {
-			if ( linkedPortal != null ) {
-				render.Update();
 			}
 		}
 
@@ -277,6 +281,9 @@ namespace Portal
 				OnTriggerExit( traveller );
 		}
 
+		public void SetType( int type ) {
+			SetMaterialGroup( type );
+		}
 
 		public void OnTriggerEnter( PortalTraveller traveller ) {
 			if( !trackedTravellers.Contains(traveller) ) {

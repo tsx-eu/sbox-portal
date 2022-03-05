@@ -10,8 +10,8 @@ namespace Portal
 		public PickupTrigger PickupTrigger { get; set; }
 
 		[Net] public PortalGunProjectile projectile { get; set; }
-		[Net] public PortalEntrance PortalEntrance { get; set; }
-		[Net] public PortalEntrance PortalExit { get; set; }
+		[Net] public Portal PortalEntrance { get; set; }
+		[Net] public Portal PortalExit { get; set; }
 
 
 		public override void Spawn() {
@@ -72,9 +72,9 @@ namespace Portal
 		}
 
 		public void OnProjectileHit(CollisionEventData data, int type) {
-			var portal = new PortalEntrance();
+			var portal = new Portal();
 			portal.Position = data.Position;
-			portal.Rotation = Rotation.LookAt( data.Normal ) * Rotation.From( -90, 0, 0 );
+			portal.Rotation = Rotation.LookAt( data.Normal ) * Rotation.From( 0, 90, 0 );
 			portal.SetType( type );
 
 			if( type == 0 ) {
@@ -88,6 +88,12 @@ namespace Portal
 					PortalExit.Delete();
 
 				PortalExit = portal;
+			}
+
+			if( PortalEntrance.IsValid() && PortalExit.IsValid() )
+			{
+				PortalEntrance.linkedPortal = PortalExit;
+				PortalExit.linkedPortal = PortalEntrance;
 			}
 		}
 	}
@@ -126,26 +132,6 @@ namespace Portal
 				weapon.OnProjectileHit( eventData, Type );
 				Delete();
 			}
-		}
-	}
-
-	public partial class PortalEntrance : ModelEntity {
-
-		public override void Spawn() {
-			base.Spawn();
-
-			SetModel( "models/vrportal/portalshape.vmdl" );
-			CollisionGroup = CollisionGroup.Trigger;
-
-			EnableSolidCollisions = false;
-			EnableTouch = true;
-			EnableTouchPersists = true;
-			EnableShadowCasting = false;
-		}
-
-		// TODO: ENUM
-		public void SetType(int type) {
-			SetMaterialGroup( type );
 		}
 	}
 }
