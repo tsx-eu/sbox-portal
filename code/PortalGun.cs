@@ -74,7 +74,7 @@ namespace Portal
 		public void OnProjectileHit(CollisionEventData data, int type) {
 			var portal = new Portal();
 			portal.Position = data.Position;
-			portal.Rotation = Rotation.LookAt( data.Normal ) * Rotation.From( 0, 90, 0 );
+			portal.Rotation = Rotation.LookAt( data.Normal ) * Rotation.From( 0, type == 0 ? 90 : -90, 0 );
 			portal.SetType( type );
 
 			if( type == 0 ) {
