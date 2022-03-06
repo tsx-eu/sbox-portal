@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	public partial class PortalRendering : RenderEntity {
 		public Portal source { get; set; }
@@ -18,6 +18,10 @@ namespace Portal
 		private Rotation rot;
 		private float fov;
 		private float nearClipPlane;
+
+		public PortalRendering() {
+			EnableDrawing = false;
+		}
 
 		private void CreateViewTexture() {
 
@@ -40,6 +44,10 @@ namespace Portal
 
 		[Event.PreRender]
 		public void Update() {
+
+			if ( !source.IsValid() || !destination.IsValid() )
+				return;
+
 			CreateViewTexture();
 
 			Position = source.Position;
@@ -135,8 +143,8 @@ namespace Portal
 		public List<PortalTraveller> trackedTravellers { get; set; } = new List<PortalTraveller>();
 
 		private PortalRendering render;
-		[Net]
-		public Portal linkedPortal { get; set; }
+		[Net, Change]
+		private Portal linkedPortal { get; set; }
 
 		private bool spawnCamera = false;
 		private ModelEntity camera { get; set; }
@@ -201,34 +209,10 @@ namespace Portal
 			}
 		}
 
-
-		[Event.Tick]
-		public void OnServerTick()
-		{
-			if ( !IsServer )
-				return;
-
-			if ( linkedPortal == null )
-				linkedPortal = FindByName( targetName ) as Portal;
-		}
-
 		[Event.Frame]
 		public void OnClientTick( ) {
 			if ( !IsClient )
 				return;
-
-			if ( linkedPortal != null && render == null ) {
-				render = new PortalRendering {
-					source = this,
-					destination = linkedPortal
-				};
-				render.SetParent( this );
-				EnableDrawing = false;
-			}
-
-			if ( linkedPortal != null ) {
-				render.Update();
-			}
 
 			if( camera != null ) {
 				camera.Position = GetCameraPosition( Local.Pawn );
@@ -258,7 +242,6 @@ namespace Portal
 			return rot;
 		}
 
-
 		public override void StartTouch( Entity other )
 		{
 			base.StartTouch( other );
@@ -280,6 +263,29 @@ namespace Portal
 			if ( traveller != null )
 				OnTriggerExit( traveller );
 		}
+
+		public void Bind(Portal portal) {
+			linkedPortal = portal;
+			EnableDrawing = !linkedPortal.IsValid();
+		}
+
+		public void OnlinkedPortalChanged(Portal oldValue, Portal newValue) {
+			if( newValue.IsValid() ) {
+				render = new PortalRendering {
+					source = this,
+					destination = newValue
+				};
+				render.SetParent( this );
+				EnableDrawing = false;
+				Log.Info( "enabled" );
+			}
+			else {
+				render = null;
+				EnableDrawing = true;
+				Log.Info( "disabled" );
+			}
+		}
+
 
 		public void SetType( int type ) {
 			SetMaterialGroup( type );

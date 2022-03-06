@@ -1,7 +1,7 @@
 ﻿using System;
 using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	public partial class PortalTraveller : EntityComponent
 	{
@@ -30,6 +30,7 @@ namespace Portal
 		public void EnterPortalThreshold(Portal portal) {
 			entrance = portal;
 
+			return;
 			if ( clone == null && Host.IsServer ) {
 				Player origin = Entity as Player;
 

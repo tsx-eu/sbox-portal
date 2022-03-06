@@ -1,7 +1,6 @@
-﻿
-using Sandbox;
+﻿using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	[Library( "portal_gun", Spawnable = true )]
 	public partial class PortalGun : BaseWeapon
@@ -72,6 +71,11 @@ namespace Portal
 		}
 
 		public void OnProjectileHit(CollisionEventData data, int type) {
+
+			// this is not a portalizable surface.
+			if ( data.Entity is not Wall )
+				return;
+
 			var portal = new Portal();
 			portal.Position = data.Position;
 			portal.Rotation = Rotation.LookAt( data.Normal ) * Rotation.From( 0, type == 0 ? 90 : -90, 0 );
@@ -90,10 +94,9 @@ namespace Portal
 				PortalExit = portal;
 			}
 
-			if( PortalEntrance.IsValid() && PortalExit.IsValid() )
-			{
-				PortalEntrance.linkedPortal = PortalExit;
-				PortalExit.linkedPortal = PortalEntrance;
+			if( PortalEntrance.IsValid() && PortalExit.IsValid() ) {
+				PortalEntrance.Bind( PortalExit );
+				PortalExit.Bind( PortalEntrance );
 			}
 		}
 	}
@@ -127,11 +130,10 @@ namespace Portal
 		protected override void OnPhysicsCollision( CollisionEventData eventData )
 		{
 			base.OnPhysicsCollision( eventData );
-			if ( eventData.Entity.IsWorld ) {
-				var weapon = Owner as PortalGun;
-				weapon.OnProjectileHit( eventData, Type );
-				Delete();
-			}
+			
+			var weapon = Owner as PortalGun;
+			weapon.OnProjectileHit( eventData, Type );
+			Delete();
 		}
 	}
 }
