@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	
 	[Library( "portal_dropper" )]

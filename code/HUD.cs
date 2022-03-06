@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Sandbox.UI;
 
-namespace Portal
+namespace PortalGame
 {
 	public class HUD : Sandbox.HudEntity<RootPanel>
 	{

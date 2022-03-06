@@ -1,6 +1,6 @@
 ﻿using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	public interface IPlayerGrabable {
 		public PortalPlayer GrabbedBy { get; set; }

@@ -1,7 +1,6 @@
-﻿
-using Sandbox;
+﻿using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	public partial class Gamemode : Sandbox.Game
 	{

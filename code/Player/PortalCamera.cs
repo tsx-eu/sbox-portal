@@ -1,6 +1,6 @@
 ﻿using Sandbox;
 
-namespace Portal
+namespace PortalGame
 {
 	public partial class PortalCamera : CameraMode
 	{

@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using Sandbox;
 
-namespace Portal {
+namespace PortalGame
+{
 
 	public interface IButtonTriggerable
 	{
