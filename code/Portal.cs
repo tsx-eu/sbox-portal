@@ -77,18 +77,15 @@ namespace PortalGame
 				return;
 
 			EnableDrawing = false;
+			
+			RenderAttributes attributes = new RenderAttributes();
+			float nearZ = 0.1f;
+//			nearZ = SetClipPlane( attributes );
 
-			using ( Render.RenderTarget( viewTexture ) )
-			{
-				RenderAttributes attributes = new RenderAttributes();
-				//float nearZ = SetClipPlane( attributes );
-				float nearZ = 0.1f;
-				Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 99999.0f );
-			}
+			Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 9999.0f );
 
 			//Vector3 localPosition;
 			//float localWidth = getPortalLocalPosition( out localPosition );
-
 			quad.Draw( material );
 		}
 
