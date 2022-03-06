@@ -59,7 +59,7 @@ namespace PortalGame
 			nearClipPlane = ((Local.Pawn as PortalPlayer).CameraMode as PortalCamera).ZNear;
 
 			EnableDrawing = true;
-			RenderBounds = new BBox( Vector3.One * -99999, Vector3.One * 99999 );
+			RenderBounds = new BBox( Vector3.One * -64, Vector3.One * 64 );
 
 			// FIXME: Moving Transform.position to portal position cause bug in the renderer.
 		}
@@ -74,8 +74,6 @@ namespace PortalGame
 		public override void DoRender( SceneObject obj )
 		{
 			if ( EnableDrawing == false )
-				return;
-			if ( !source.IsVisible() )
 				return;
 
 			EnableDrawing = false;
@@ -269,18 +267,18 @@ namespace PortalGame
 			LinkedPortal = portal;
 			EnableDrawing = !LinkedPortal.IsValid();
 		}
+		public void Open(Wall wall) {
+			LinkedWall = wall;
+			wall.Open( this );
+		}
+
 		public void Close() {
 			if ( LinkedWall.IsValid() )
-				LinkedWall.Reset();
+				LinkedWall.Close(this);
 
 			Delete();
 		}
 
-		public void Bind(Wall wall)
-		{
-			LinkedWall = wall;
-			wall.Carve( this );
-		}
 
 		public void OnLinkedPortalChanged( Portal oldValue, Portal newValue) {
 			if ( Host.IsClient ) {
@@ -307,6 +305,8 @@ namespace PortalGame
 		public void OnTriggerEnter( PortalTraveller traveller ) {
 			if( !trackedTravellers.Contains(traveller) ) {
 				Log.Error( "entered in " + Name );
+				LinkedWall.Carve(true);
+
 				traveller.EnterPortalThreshold( this );
 				traveller.previousOffsetFromPortal = traveller.Entity.Position - Position;
 				trackedTravellers.Add(traveller);
@@ -316,17 +316,11 @@ namespace PortalGame
 		public void OnTriggerExit( PortalTraveller traveller ) {
 			if ( trackedTravellers.Contains( traveller ) ) {
 				Log.Error( "left " + Name );
+				LinkedWall.Carve( false );
+
 				traveller.ExitPortalThreshold( this );
 				trackedTravellers.Remove( traveller );
 			}
-		}
-
-		public bool IsVisible( ) {
-			// TODO: PVS check ? 
-			// TODO: AABB check ?
-			// TODO: Trace.Sweep ?
-
-			return true;
 		}
 
 	}

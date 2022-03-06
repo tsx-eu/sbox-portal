@@ -97,7 +97,7 @@ namespace PortalGame
 			}
 
 
-			portal.Bind( data.Entity as Wall );
+			portal.Open( data.Entity as Wall );
 
 			if ( PortalEntrance.IsValid() && PortalExit.IsValid() ) {
 				PortalEntrance.Open( PortalExit );
