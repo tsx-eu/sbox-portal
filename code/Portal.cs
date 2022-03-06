@@ -137,14 +137,14 @@ namespace PortalGame
 	[Hammer.Model( Model = "models/vrportal/portalshape.vmdl" )]
 	public partial class Portal : ModelEntity
 	{
-		[Net, Property( "Target" ), FGDType( "target_destination" )]
-		public string targetName { get; set; }
+		[Net, Change( nameof( OnLinkedPortalChanged) ) ]
+		private Portal LinkedPortal { get; set; }
+
+		[Net]
+		private Wall LinkedWall { get; set; }
 
 		public List<PortalTraveller> trackedTravellers { get; set; } = new List<PortalTraveller>();
-
 		private PortalRendering render;
-		[Net, Change]
-		private Portal linkedPortal { get; set; }
 
 		private bool spawnCamera = false;
 		private ModelEntity camera { get; set; }
@@ -166,7 +166,7 @@ namespace PortalGame
 		{
 			base.ClientSpawn();
 
-			if ( spawnCamera && (targetName == "orange" || targetName == "gray") )
+			if ( spawnCamera )
 			{
 				camera = new ModelEntity();
 				camera.Name = "debug-camera";
@@ -178,7 +178,7 @@ namespace PortalGame
 
 		[Event.Physics.PostStep]
 		public void CheckTraversal() {
-			if ( linkedPortal == null )
+			if ( LinkedPortal == null )
 				return;
 
 			for ( int i = 0; i < trackedTravellers.Count; i++ )
@@ -197,7 +197,7 @@ namespace PortalGame
 					var rot = GetRotation( traveller.Entity );
 
 					traveller.Teleport( pos, rot );
-					linkedPortal.OnTriggerEnter( traveller );
+					LinkedPortal.OnTriggerEnter( traveller );
 					trackedTravellers.RemoveAt( i );
 					i--;
 					continue;
@@ -223,22 +223,22 @@ namespace PortalGame
 		public Vector3 GetPosition( Entity player )
 		{
 			var relativePositionFromOrigin = Position - player.Position;
-			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * linkedPortal.Rotation;
-			var relativePositionToPortal = linkedPortal.Position - relativeRotation;
+			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * LinkedPortal.Rotation;
+			var relativePositionToPortal = LinkedPortal.Position - relativeRotation;
 
 			return relativePositionToPortal;
 		}
 		public Vector3 GetCameraPosition( Entity player )
 		{
 			var relativePositionFromOrigin = Position - player.EyePosition;
-			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * linkedPortal.Rotation;
-			var relativePositionToPortal = linkedPortal.Position - relativeRotation;
+			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * LinkedPortal.Rotation;
+			var relativePositionToPortal = LinkedPortal.Position - relativeRotation;
 
 			return relativePositionToPortal;
 		}
 		public Rotation GetRotation( Entity player )
 		{
-			var rot = Rotation.Inverse * linkedPortal.Rotation * player.EyeRotation;
+			var rot = Rotation.Inverse * LinkedPortal.Rotation * player.EyeRotation;
 			return rot;
 		}
 
@@ -264,28 +264,41 @@ namespace PortalGame
 				OnTriggerExit( traveller );
 		}
 
-		public void Bind(Portal portal) {
-			linkedPortal = portal;
-			EnableDrawing = !linkedPortal.IsValid();
+		public void Open(Portal portal)
+		{
+			LinkedPortal = portal;
+			EnableDrawing = !LinkedPortal.IsValid();
+		}
+		public void Close() {
+			if ( LinkedWall.IsValid() )
+				LinkedWall.Reset();
+
+			Delete();
 		}
 
-		public void OnlinkedPortalChanged(Portal oldValue, Portal newValue) {
-			if( newValue.IsValid() ) {
-				render = new PortalRendering {
-					source = this,
-					destination = newValue
-				};
-				render.SetParent( this );
-				EnableDrawing = false;
-				Log.Info( "enabled" );
-			}
-			else {
-				render = null;
-				EnableDrawing = true;
-				Log.Info( "disabled" );
-			}
+		public void Bind(Wall wall)
+		{
+			LinkedWall = wall;
+			wall.Carve( this );
 		}
 
+		public void OnLinkedPortalChanged( Portal oldValue, Portal newValue) {
+			if ( Host.IsClient ) {
+				if ( newValue.IsValid() ) {
+					render = new PortalRendering {
+						source = this,
+						destination = newValue
+					};
+					render.SetParent( this );
+					EnableDrawing = false;
+				}
+				else {
+					render = null;
+					EnableDrawing = true;
+				}
+			}
+		}
+		
 
 		public void SetType( int type ) {
 			SetMaterialGroup( type );

@@ -73,8 +73,10 @@ namespace PortalGame
 		public void OnProjectileHit(CollisionEventData data, int type) {
 
 			// this is not a portalizable surface.
-			if ( data.Entity is not Wall )
+			if ( data.Entity is not Wall ) {
+				// TODO: animate failure
 				return;
+			}
 
 			var portal = new Portal();
 			portal.Position = data.Position;
@@ -83,20 +85,23 @@ namespace PortalGame
 
 			if( type == 0 ) {
 				if ( PortalEntrance != null && PortalEntrance.IsValid() )
-					PortalEntrance.Delete();
+					PortalEntrance.Close();
 
 				PortalEntrance = portal;
 			}
 			else if( type == 1 ) {
 				if ( PortalExit != null && PortalExit.IsValid() )
-					PortalExit.Delete();
+					PortalExit.Close();
 
 				PortalExit = portal;
 			}
 
-			if( PortalEntrance.IsValid() && PortalExit.IsValid() ) {
-				PortalEntrance.Bind( PortalExit );
-				PortalExit.Bind( PortalEntrance );
+
+			portal.Bind( data.Entity as Wall );
+
+			if ( PortalEntrance.IsValid() && PortalExit.IsValid() ) {
+				PortalEntrance.Open( PortalExit );
+				PortalExit.Open( PortalEntrance );
 			}
 		}
 	}
