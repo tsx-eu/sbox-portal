@@ -49,7 +49,7 @@ namespace PortalGame
 
 	[Library( "portal_wall" )]
 	[Hammer.Solid]
-	public partial class Wall : ModelEntity {
+	public partial class Wall : BrushEntity {
 
 		[Net] IDictionary<Portal, FakeWall> fakes { get; set; }
 
