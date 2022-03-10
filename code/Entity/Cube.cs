@@ -15,6 +15,8 @@ namespace PortalGame
 			SetModel( "models/props/metal_box.vmdl" );
 			SetupPhysicsFromModel( PhysicsMotionType.Dynamic );
 			PhysicsEnabled = true;
+
+			Components.Add( new PortalTraveller() );
 		}
 
 	}

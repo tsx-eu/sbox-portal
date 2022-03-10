@@ -82,7 +82,7 @@ namespace PortalGame
 			float nearZ = 0.1f;
 //			nearZ = SetClipPlane( attributes );
 
-			Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 9999.0f );
+			//Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 9999.0f );
 
 			//Vector3 localPosition;
 			//float localWidth = getPortalLocalPosition( out localPosition );
@@ -302,7 +302,7 @@ namespace PortalGame
 		public void OnTriggerEnter( PortalTraveller traveller ) {
 			if( !trackedTravellers.Contains(traveller) ) {
 				Log.Error( "entered in " + Name );
-				LinkedWall.Carve(true);
+				LinkedWall.Carve( true, traveller.Entity as ModelEntity );
 
 				traveller.EnterPortalThreshold( this );
 				traveller.previousOffsetFromPortal = traveller.Entity.Position - Position;
@@ -313,7 +313,7 @@ namespace PortalGame
 		public void OnTriggerExit( PortalTraveller traveller ) {
 			if ( trackedTravellers.Contains( traveller ) ) {
 				Log.Error( "left " + Name );
-				LinkedWall.Carve( false );
+				LinkedWall.Carve( false, traveller.Entity as ModelEntity );
 
 				traveller.ExitPortalThreshold( this );
 				trackedTravellers.Remove( traveller );

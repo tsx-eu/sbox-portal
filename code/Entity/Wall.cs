@@ -55,6 +55,7 @@ namespace PortalGame
 
 		public override void Spawn() {
 			base.Spawn();
+			SetInteractsExclude( CollisionLayer.CARRIED_OBJECT );
 			Transmit = TransmitType.Always;
 			fakes = new Dictionary<Portal, FakeWall>();
 		}
@@ -72,19 +73,24 @@ namespace PortalGame
 
 			fakes[entrance].Delete();
 			fakes.Remove( entrance );
-			Carve( false );
 		}
 
-		public void Carve(bool status = true) {
+		public void Carve( bool status, ModelEntity traveller) {
 			if ( status ) {
-				EnableAllCollisions = false;
-				EnableSolidCollisions = true;
-				RemoveCollisionLayer( CollisionLayer.Player );
+				traveller.AddCollisionLayer( CollisionLayer.CARRIED_OBJECT );
+
+				if ( traveller is PortalPlayer )
+					EnableAllCollisions = false;
+				else
+					traveller.RemoveCollisionLayer( CollisionLayer.PhysicsProp );
 			}
 			else {
-				EnableAllCollisions = true;
-				EnableSolidCollisions = true;
-				AddCollisionLayer( CollisionLayer.Player );
+				traveller.RemoveCollisionLayer( CollisionLayer.CARRIED_OBJECT );
+				
+				if ( traveller is PortalPlayer )
+					EnableAllCollisions = true; 
+				else
+					traveller.AddCollisionLayer( CollisionLayer.PhysicsProp );
 			}
 		}
 
