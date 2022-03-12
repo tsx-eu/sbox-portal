@@ -53,7 +53,7 @@ namespace PortalGame
 			Position = source.Position;
 			Rotation = source.Rotation;
 
-			pos = source.GetCameraPosition( Local.Pawn );
+			pos = source.GetPosition( Local.Pawn );
 			rot = source.GetRotation( Local.Pawn );
 			fov = GetFOV( Local.Pawn );
 			nearClipPlane = ((Local.Pawn as PortalPlayer).CameraMode as PortalCamera).ZNear;
@@ -81,7 +81,7 @@ namespace PortalGame
 			RenderAttributes attributes = new RenderAttributes();
 			float nearZ = 0.1f;
 //			nearZ = SetClipPlane( attributes );
-
+			
 			//Render.Draw.DrawScene( viewTexture, depthTexture, obj.World, attributes, new Rect(0, 0, viewTexture.Width, viewTexture.Height), pos, rot, fov, nearZ, 9999.0f );
 
 			//Vector3 localPosition;
@@ -130,10 +130,12 @@ namespace PortalGame
 
 	[Library("portal")]
 	[Hammer.Model( Model = "models/vrportal/portalshape.vmdl" )]
+
+	
 	public partial class Portal : ModelEntity
 	{
 		[Net, Change( nameof( OnLinkedPortalChanged) ) ]
-		private Portal LinkedPortal { get; set; }
+		public Portal LinkedPortal { get; set; }
 
 		[Net]
 		private Wall LinkedWall { get; set; }
@@ -150,12 +152,16 @@ namespace PortalGame
 
 			Transmit = TransmitType.Always;
 			SetModel( "models/vrportal/portalshape.vmdl" );
-			SetupPhysicsFromModel( PhysicsMotionType.Keyframed );
-			CollisionGroup = CollisionGroup.Trigger;
+			SetupPhysicsFromModel( PhysicsMotionType.Static );
 
+			CollisionGroup = CollisionGroup.Interactive;
+
+			EnableTraceAndQueries = true;
 			EnableSolidCollisions = false;
 			EnableTouch = true;
 			EnableTouchPersists = true;
+
+			SetInteractsAs( CollisionLayer.WINDOW );
 		}
 		public override void ClientSpawn()
 		{
@@ -210,27 +216,24 @@ namespace PortalGame
 				return;
 
 			if( camera != null ) {
-				camera.Position = GetCameraPosition( Local.Pawn );
+				camera.Position = GetPosition( Local.Pawn );
 				camera.Rotation = GetRotation( Local.Pawn );
 			}
 		}
 
-		public Vector3 GetPosition( Entity player )
+		public Vector3 GetPosition( Entity player ) {
+			return GetPosition( player.Position );
+		}
+
+		public Vector3 GetPosition( Vector3 targetPosition )
 		{
-			var relativePositionFromOrigin = Position - player.Position;
+			var relativePositionFromOrigin = Position - targetPosition;
 			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * LinkedPortal.Rotation;
 			var relativePositionToPortal = LinkedPortal.Position - relativeRotation;
 
 			return relativePositionToPortal;
 		}
-		public Vector3 GetCameraPosition( Entity player )
-		{
-			var relativePositionFromOrigin = Position - player.EyePosition;
-			var relativeRotation = relativePositionFromOrigin * Rotation.Inverse * LinkedPortal.Rotation;
-			var relativePositionToPortal = LinkedPortal.Position - relativeRotation;
 
-			return relativePositionToPortal;
-		}
 		public Rotation GetRotation( Entity player )
 		{
 			var rot = Rotation.Inverse * LinkedPortal.Rotation * player.EyeRotation;

@@ -71,7 +71,6 @@ namespace PortalGame
 			GrabbedEntity = null;
 		}
 
-
 		private void UpdateGrab() {
 			if ( !Grabbing )
 				return;
@@ -82,14 +81,37 @@ namespace PortalGame
 				return;
 			}
 
-			var target = EyePosition + EyeRotation.Forward * MaxGrabDistance;
-			var direction = target - ent.Position;
-			float distance = direction.Length;
+			var wantedDestination = EyePosition + EyeRotation.Forward * 64;
 
-			if ( distance > MaxGrabDistance || distance < MinGrabDistance )
-				ent.Velocity = direction * GrabVelocityFactor;
-			if ( distance > MaxGrabDistance * 2.0f )
-				StopGrab();
+			var ray1 = PortalTrace.Ray( EyePosition, wantedDestination )
+				.WorldAndEntities()
+				.HitLayer( CollisionLayer.WINDOW )
+				.Ignore( this )
+				.Ignore( GrabbedEntity as Entity )
+				.Run( );
+
+			var ray2 = PortalTrace.Ray( ent.Position, wantedDestination )
+				.WorldAndEntities()
+				.HitLayer( CollisionLayer.WINDOW )
+				.Ignore( this )
+				.Ignore( GrabbedEntity as Entity )
+				.Run( );
+
+
+			if ( ray1.request.wentThroughtPortal || ray2.request.wentThroughtPortal )
+			{
+				ent.Position = ray1.result.EndPosition;
+			}
+			else
+			{
+				var direction = wantedDestination - ent.Position;
+				float distance = direction.Length;
+
+				if ( distance > MaxGrabDistance || distance < MinGrabDistance )
+					ent.Velocity = direction * GrabVelocityFactor;
+				if ( distance > MaxGrabDistance * 2.0f )
+					StopGrab();
+			}
 		}
 	}
 }
