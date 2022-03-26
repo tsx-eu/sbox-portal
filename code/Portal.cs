@@ -161,7 +161,7 @@ namespace PortalGame
 			EnableTouch = true;
 			EnableTouchPersists = true;
 
-			SetInteractsAs( CollisionLayer.WINDOW );
+			SetInteractsAs( CollisionLayer.NPC_CLIP );
 		}
 		public override void ClientSpawn()
 		{

@@ -29,10 +29,11 @@ namespace PortalGame
 			if ( Grabbing )
 				return;
 
-			var tr = Trace.Ray( EyePosition, EyePosition + EyeRotation.Forward * MaxGrabDistance )
+			var tr = PortalTrace.Ray( EyePosition, EyePosition + EyeRotation.Forward * MaxGrabDistance )
 				.Ignore( this, false )
 				.HitLayer( CollisionLayer.Solid )
-				.Run();
+				.HitLayer( CollisionLayer.NPC_CLIP )
+				.Run().result;
 
 			if ( !tr.Hit || !tr.Entity.IsValid() || tr.Entity.IsWorld || tr.StartedSolid )
 				return;
@@ -85,14 +86,14 @@ namespace PortalGame
 
 			var ray1 = PortalTrace.Ray( EyePosition, wantedDestination )
 				.WorldAndEntities()
-				.HitLayer( CollisionLayer.WINDOW )
+				.HitLayer( CollisionLayer.NPC_CLIP )
 				.Ignore( this )
 				.Ignore( GrabbedEntity as Entity )
 				.Run( );
 
 			var ray2 = PortalTrace.Ray( ent.Position, wantedDestination )
 				.WorldAndEntities()
-				.HitLayer( CollisionLayer.WINDOW )
+				.HitLayer( CollisionLayer.NPC_CLIP )
 				.Ignore( this )
 				.Ignore( GrabbedEntity as Entity )
 				.Run( );
