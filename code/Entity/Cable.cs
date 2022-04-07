@@ -49,6 +49,12 @@ namespace Sandbox.Entity
 			Timer,
 			Corner
 		};
+		private enum CableFace {
+			Unkown,
+			X,
+			Y,
+			Z
+		};
 
 		[Property( "color")]
 		public CableColor Color { get; set; } = CableColor.Blue;
@@ -56,6 +62,9 @@ namespace Sandbox.Entity
 		public CableType Type { get; set; } = CableType.New;
 		[Property( "ending" )]
 		public CableEnding Ending { get; set; } = CableEnding.OnOff;
+		[Property( "facing" )] 
+		private CableFace WallDirection { get; set; } = CableFace.Z;
+
 
 		private static void Init_Textures() {
 			string key = "";
@@ -130,6 +139,7 @@ namespace Sandbox.Entity
 			base.ClientSpawn();
 			pathNodesJSON = NetworkedPathNodesJSON;
 			PathNodes = JsonSerializer.Deserialize<List<BasePathNode>>( pathNodesJSON, new JsonSerializerOptions { PropertyNameCaseInsensitive = true } );
+			WallDirection = CableFace.Unkown;
 
 			childs.ForEach( i => i.Delete() );
 			childs.Clear();
@@ -144,11 +154,10 @@ namespace Sandbox.Entity
 			for ( int i = 0; i < PathNodes.Count - 1; i++ ) {
 
 				bool start = (i == 0);
-				bool corner = !PathNodes[i].TangentIn.z.AlmostEqual( PathNodes[i].TangentOut.z );
 				bool last = (i == PathNodes.Count - 2);
 
 				var model = Model.Builder
-					.AddMeshes( CreateMeshesh( PathNodes[i], PathNodes[i + 1], start, corner, last ) )
+					.AddMeshes( CreateMeshesh( PathNodes[i], PathNodes[i + 1], start, last ) )
 					.Create();
 
 				var prop = new ModelEntity {
@@ -160,49 +169,87 @@ namespace Sandbox.Entity
 				prop.Spawn();
 				childs.Add( prop );
 
-				await Task.Delay( 10 );
+				await Task.Delay( 100 );
 			}
 		}
 
-		private Vector3 GetMeshDirection( BasePathNode src, BasePathNode dst )
-		{
-			Vector3 mid = Transform.Position + (src.Position + dst.Position) / 2;
+		private (Vector3, CableFace) GetMeshDirection( BasePathNode src, BasePathNode dst, CableFace direction) {
+			void ChangeDirection(ref CableFace direction) {
+				if ( !src.TangentIn.x.AlmostEqual( 0 ) )
+					direction = CableFace.X;
+				if ( !src.TangentIn.y.AlmostEqual( 0 ) )
+					direction = CableFace.Y;
+				if ( !src.TangentIn.z.AlmostEqual( 0 ) )
+					direction = CableFace.Z;
+			}
 
-			// fwd is tangant
-			Vector3 up = dst.TangentIn.EulerAngles.ToRotation().Up;
-			Vector3 left = dst.TangentIn.EulerAngles.ToRotation().Left;
+			switch( direction ) {
+				case CableFace.Unkown:
+				{
+					Vector3 mid = Transform.Position + (src.Position + dst.Position) / 2;
 
-			//DebugOverlay.Line( mid +   up * 16, mid -   up * 16, Color.Green, 30, false );
-			//DebugOverlay.Line( mid + left * 16, mid - left * 16, Color.Blue , 30, false );
+					var up1 = Trace.Ray( mid + Vector3.Up * 8f, mid - Vector3.Up * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
+					var up2 = Trace.Ray( mid - Vector3.Up * 8f, mid + Vector3.Up * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
 
-			var up1 = Trace.Ray( mid + up * 8f, mid - up * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
-			var up2 = Trace.Ray( mid - up * 8f, mid + up * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
+					if ( up1.Hit && up1.Distance >= 4f || up2.Hit && up2.Distance >= 4f ) {
+						direction = CableFace.Z;
+						break;
+					}
 
-			if ( up1.Hit && up1.Distance >= 4f )
-				return up1.Normal;
-			if ( up2.Hit && up2.Distance >= 4f )
-				return up2.Normal;
+					var left1 = Trace.Ray( mid + Vector3.Left * 8f, mid - Vector3.Left * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
+					var left2 = Trace.Ray( mid - Vector3.Left * 8f, mid + Vector3.Left * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
 
-			var left1 = Trace.Ray( mid + left * 8f, mid - left * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
-			var left2 = Trace.Ray( mid - left * 8f, mid + left * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
+					if ( left1.Hit && left1.Distance >= 4f || left2.Hit && left2.Distance >= 4f ) {
+						direction = CableFace.Y;
+						break;
+					}
 
-			if ( left1.Hit && left1.Distance >= 4f )
-				return left1.Normal;
-			if ( left2.Hit && left2.Distance >= 4f )
-				return left2.Normal;
+					var forward1 = Trace.Ray( mid + Vector3.Forward * 8f, mid - Vector3.Forward * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
+					var forward2 = Trace.Ray( mid - Vector3.Forward * 8f, mid + Vector3.Forward * 2f ).WorldAndEntities().Radius( 1.0f ).HitLayer( CollisionLayer.Solid ).Run();
 
-			return Vector3.Up;
+					if ( forward1.Hit && forward1.Distance >= 4f || forward2.Hit && forward2.Distance >= 4f ) {
+						direction = CableFace.X;
+						break;
+					}
+
+					break;
+				}
+				case CableFace.X: // nous sommes sur une face en direction X
+					if ( !src.Position.x.AlmostEqual( dst.Position.x ) )
+						ChangeDirection( ref direction );
+					break;
+				case CableFace.Y:
+					if ( !src.Position.y.AlmostEqual( dst.Position.y ) )
+						ChangeDirection( ref direction );
+					break;
+				case CableFace.Z:
+					if ( !src.Position.z.AlmostEqual( dst.Position.z ) )
+						ChangeDirection( ref direction );
+					break;
+			}
+
+			switch ( direction ) {
+				case CableFace.X:
+					return (Vector3.Forward, direction);
+				case CableFace.Y:
+					return (Vector3.Left, direction);
+				case CableFace.Z:
+					return (Vector3.Up, direction);
+			}
+
+			return (Vector3.One, direction);
 		}
 
-		private Mesh[] CreateMeshesh(BasePathNode src, BasePathNode dst, bool first, bool corner, bool last)
+		private Mesh[] CreateMeshesh(BasePathNode src, BasePathNode dst, bool first, bool last)
 		{
-			void CreateQuad( Vector3 position, Rotation rot, Material mat, ref bool skipedFirst, ref bool skippedCorner, ref List<Mesh> meshes ) {
+			void CreateQuad( Vector3 position, Rotation rot, Material mat, ref bool skipedFirst, ref bool skippedCorner, ref bool edge, ref List<Mesh> meshes ) {
 				if ( !skippedCorner )
 					skippedCorner = true;
 
 				if ( !skipedFirst ) {
 					skipedFirst = true;
-					if( first || corner )
+
+					if( first || edge )
 						return;
 				}
 
@@ -210,7 +257,7 @@ namespace Sandbox.Entity
 				var vb = new VertexBuffer();
 				vb.Init( true );
 
-				Vector3 size = new Vector3( CableSize );
+				var size = new Vector3( CableSize );
 
 				var f = rot.Forward * 0.1f;
 				var u = rot.Left * size.y * 0.5f;
@@ -226,42 +273,46 @@ namespace Sandbox.Entity
 				meshes.Add( mesh );
 			}
 
-			Vector3 start = src.Position;
-			Vector3 end = dst.Position;
-			Rotation rot = GetMeshDirection( src, dst ).EulerAngles.ToRotation();
-
 			List<Mesh> meshes = new List<Mesh>();
-			Vector3 delta = end - start;
+			float x = 0, y = 0, z = 0;
+			bool skipedFirst = false, skippedCorner = false, edge = false;
+			Vector3 start = src.Position;
+			Vector3 stop = dst.Position;
+			Vector3 delta = stop - start;
 
 			float incrx = Math.Sign( delta.x ) * CableSize;
 			float incry = Math.Sign( delta.y ) * CableSize;
 			float incrz = Math.Sign( delta.z ) * CableSize;
 
-			float x = 0, y = 0, z = 0;
-			bool skipedFirst = false, skippedCorner = false;
+			CableFace oldFace = WallDirection;
+			(Vector3 dir, WallDirection) = GetMeshDirection( src, dst, WallDirection);
+			if ( oldFace != WallDirection )
+				edge = true;
+			
+			Rotation rot = dir.EulerAngles.ToRotation();
 
 			skippedCorner = false;
 			for ( x = 0; Math.Abs( x )  < Math.Abs( delta.x ); x += incrx ) {
 				CreateQuad( new Vector3( start.x + x, start.y + y, start.z + z), rot, !skippedCorner ? MaterialCorner : Material, 
-					ref skipedFirst, ref skippedCorner, ref meshes );
+					ref skipedFirst, ref skippedCorner, ref edge, ref meshes );
 			}
 
 			skippedCorner = false;
 			for ( y = 0; Math.Abs( y ) < Math.Abs( delta.y ); y += incry ) {
 				CreateQuad( new Vector3( start.x + x, start.y + y, start.z + z), rot, !skippedCorner ? MaterialCorner : Material, 
-					ref skipedFirst, ref skippedCorner, ref meshes );
+					ref skipedFirst, ref skippedCorner, ref edge, ref meshes );
 			}
 
 			skippedCorner = false;
 			for ( z = 0; Math.Abs( z ) < Math.Abs( delta.z ); z += incrz ) {
 				CreateQuad( new Vector3( start.x + x, start.y + y, start.z + z), rot, !skippedCorner ? MaterialCorner : Material, 
-					ref skipedFirst, ref skippedCorner, ref meshes );
+					ref skipedFirst, ref skippedCorner, ref edge, ref meshes );
 			}
 
 
 			if( last ) {
 				CreateQuad( new Vector3( start.x + x, start.y + y, start.z + z ), rot, MaterialEnd,
-					ref skipedFirst, ref skippedCorner, ref meshes );
+					ref skipedFirst, ref skippedCorner, ref edge, ref meshes );
 			}
 			return meshes.ToArray();			
 		} 

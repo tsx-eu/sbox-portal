@@ -39,6 +39,13 @@ metadata
 		1 : "Timer"
 		2 : "Corner"
 	]
+	facing(choices) : "Wall Direction" : 3 : "" =
+	[
+		0 : "Unkown"
+		1 : "X"
+		2 : "Y"
+		3 : "Z"
+	]
 ]
 
 //
