@@ -14,6 +14,18 @@
 ]
 
 //
+// Sandbox.Entity.Cable
+//
+@PathClass base(BaseProperties_local_portal) 
+metadata
+{
+	node_entity_class = "portal_cable"
+}
+= portal_cable : ""
+[
+]
+
+//
 // PortalGame.Portal
 //
 @PointClass base(BaseProperties_local_portal) model() = portal : ""
@@ -53,22 +65,9 @@
 ]
 
 //
-// PortalGame.SecurityCamera
-//
-@PointClass base(BaseProperties_local_portal) model() = portal_camera : ""
-[
-	model(resource:vmdl) { report = true hide_when_solid = true }: "World Model" : "models/props/security_camera.vmdl" : "The model this entity should use."
-	skin(materialgroup) { group = "Rendering" hide_when_solid = true } : "Skin" : "default" : "Some models have multiple versions of their textures, called skins." 
-	bodygroups(bodygroupchoices) { group = "Rendering" hide_when_solid = true } : "Body Groups" : "" : "Some models have multiple variations of certain items, such as characters having different hair styles, etc."
-	enable_shadows(boolean) { group = "Rendering" } : "Shadow Casting" : 1 : "Whether this entity should cast shadows or not"
-
-	input SetColor(string) : "Sets the color of this entity. Format is '255 255 255 255'."
-]
-
-//
 // PortalGame.Cube
 //
-@PointClass base(BaseProperties_local_portal) tags( Physics ) model() = portal_cube : ""
+@PointClass base(BaseProperties_local_portal, BasePhysicsSimulated) tags( Physics ) model() = portal_cube : ""
 [
 	model(resource:vmdl) { report = true hide_when_solid = true }: "World Model" : "models/props/metal_box.vmdl" : "The model this entity should use."
 	skin(materialgroup) { group = "Rendering" hide_when_solid = true } : "Skin" : "default" : "Some models have multiple versions of their textures, called skins." 
@@ -122,6 +121,19 @@
 	input Open(void) : ""
 	input Close(void) : ""
 	input SetCube(integer) : ""
+	input SetColor(string) : "Sets the color of this entity. Format is '255 255 255 255'."
+]
+
+//
+// PortalGame.SecurityCamera
+//
+@PointClass base(BaseProperties_local_portal) model() = portal_camera : ""
+[
+	model(resource:vmdl) { report = true hide_when_solid = true }: "World Model" : "models/props/security_camera.vmdl" : "The model this entity should use."
+	skin(materialgroup) { group = "Rendering" hide_when_solid = true } : "Skin" : "default" : "Some models have multiple versions of their textures, called skins." 
+	bodygroups(bodygroupchoices) { group = "Rendering" hide_when_solid = true } : "Body Groups" : "" : "Some models have multiple variations of certain items, such as characters having different hair styles, etc."
+	enable_shadows(boolean) { group = "Rendering" } : "Shadow Casting" : 1 : "Whether this entity should cast shadows or not"
+
 	input SetColor(string) : "Sets the color of this entity. Format is '255 255 255 255'."
 ]
 

@@ -429,7 +429,7 @@
 				m_sequenceName = "aimmatrix"
 				m_fAngleIncrement = 45.0
 				m_bCanLookStraightDown = false
-				m_target = "LookTarget_WorldSpace"
+				m_target = "VectorParameter"
 				m_param = 
 				{
 					m_id = 638034940
