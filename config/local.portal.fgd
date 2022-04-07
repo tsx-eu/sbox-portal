@@ -23,6 +23,22 @@ metadata
 }
 = portal_cable : ""
 [
+	color(choices) : "Color" : 0 : "" =
+	[
+		0 : "Blue"
+		1 : "Orange"
+	]
+	type(choices) : "Type" : 0 : "" =
+	[
+		0 : "New"
+		1 : "Old"
+	]
+	ending(choices) : "Ending" : 0 : "" =
+	[
+		0 : "On Off"
+		1 : "Timer"
+		2 : "Corner"
+	]
 ]
 
 //
