@@ -7,6 +7,9 @@ namespace PortalGame
 	{
 		public Vector3 previousOffsetFromPortal { get; set; }
 
+		protected override void OnActivate() {
+			Entity.Tags.Add( "traveller" );
+		}
 
 		[Net] public AnimEntity clone { get; set; }
 		public Portal entrance;

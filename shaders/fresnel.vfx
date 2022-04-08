@@ -1,0 +1,98 @@
+HEADER
+{
+	CompileTargets = ( IS_SM_50 && ( PC || VULKAN ) );
+	Description = "PBR shader with fresnel.";
+}
+
+FEATURES
+{
+    #include "common/features.hlsl"
+}
+
+MODES
+{
+    VrForward();													// Indicates this shader will be used for main rendering
+    Depth( "vr_depth_only.vfx" ); 									// Shader that will be used for shadowing and depth prepass
+    ToolsVis( S_MODE_TOOLS_VIS ); 									// Ability to see in the editor
+    ToolsWireframe( "vr_tools_wireframe.vfx" ); 					// Allows for mat_wireframe to work
+	ToolsShadingComplexity( "vr_tools_shading_complexity.vfx" ); 	// Shows how expensive drawing is in debug view
+}
+
+//=========================================================================================================================
+COMMON
+{
+	#include "common/shared.hlsl"
+    // fresnel base
+
+    bool g_vUseFresnel< UiGroup("Fresnel"); UiType(CheckBox); Default(0); >;
+    BoolAttribute( g_vUseFresnel, true );
+
+    float g_vFresnelPower < UiGroup("Fresnel"); UiType(Slider); Default(1.0f); Range(0.0f, 2.0f); >;
+    FloatAttribute(g_vFresnelPower, true);
+
+    float4 g_vFresnelColor < UiType( Color ); Default4( 0.0, 0.0, 0.0, 1.0 ); UiGroup( "Fresnel" ); >;
+
+    float g_vFresnelExponent < UiGroup("Fresnel"); UiType(Slider); Default(1.0f); Range(0.0f, 2.0f); >;
+    FloatAttribute(g_fFresnelExponent, true);
+
+    // fresnel threshold
+
+    float g_vFresnelThreshold < UiGroup("Fresnel Threshold"); UiType(Slider); Default(0.5f); Range(0.0f, 1.0f); >;
+    FloatAttribute(g_vFresnelThreshold, true);
+
+    bool g_vUseFresnelThreshold< UiGroup("Fresnel Threshold"); UiType(CheckBox); Default(0); >;
+    BoolAttribute( g_vUseFresnelThreshold, true );
+
+}
+
+//=========================================================================================================================
+
+struct VertexInput
+{
+	#include "common/vertexinput.hlsl"
+};
+
+//=========================================================================================================================
+
+struct PixelInput
+{
+	#include "common/pixelinput.hlsl"
+};
+
+//=========================================================================================================================
+
+VS
+{
+	#include "common/vertex.hlsl"
+    
+	PixelInput MainVs( INSTANCED_SHADER_PARAMS( VS_INPUT i ) )
+	{
+		PixelInput o = ProcessVertex( i );
+		return FinalizeVertex( o );
+	}
+}
+
+//=========================================================================================================================
+
+PS
+{
+    #include "common/pixel.hlsl"
+
+	PixelOutput MainPs( PixelInput i )
+	{
+		Material m = GatherMaterial( i );
+        PixelOutput o = FinalizePixelMaterial( i, m );
+
+        if(g_vUseFresnel) {
+            float3 dirToCamera = normalize(i.vPositionWithOffsetWs);
+            float fresnel = pow(1.0 + dot(i.vNormalWs, dirToCamera), g_vFresnelExponent);
+
+            if(g_vUseFresnelThreshold) {
+                fresnel = fresnel > g_vFresnelThreshold;
+            }
+
+            o.vColor = lerp(o.vColor, g_vFresnelColor, fresnel * g_vFresnelPower);
+        }
+		return o;
+	}
+}
