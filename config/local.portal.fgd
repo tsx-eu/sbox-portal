@@ -46,6 +46,9 @@ metadata
 		2 : "Y"
 		3 : "Z"
 	]
+
+	input Enable(void) : ""
+	input Disable(void) : ""
 ]
 
 //
