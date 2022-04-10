@@ -50,6 +50,13 @@ namespace PortalGame
 			base.Respawn();
 		}
 
+		public override PawnController GetActiveController()
+		{
+			if ( DevController != null ) return DevController;
+
+			return base.GetActiveController();
+		}
+
 		public override void Simulate( Client cl )
 		{
 			base.Simulate( cl );

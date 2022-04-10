@@ -1,75 +1,102 @@
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
 HEADER
 {
-	CompileTargets = ( IS_SM_50 && ( PC || VULKAN ) );
-	Description = "PBR shader with fresnel.";
+    CompileTargets = ( IS_SM_50 && ( PC || VULKAN ) );
+    Description = "Fresnel";
+	
+	DevShader = true;
 }
 
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
 FEATURES
 {
     #include "common/features.hlsl"
 }
 
+//=========================================================================================================================
+// Optional
+//=========================================================================================================================
 MODES
 {
-    VrForward();													// Indicates this shader will be used for main rendering
-    Depth( "vr_depth_only.vfx" ); 									// Shader that will be used for shadowing and depth prepass
-    ToolsVis( S_MODE_TOOLS_VIS ); 									// Ability to see in the editor
-    ToolsWireframe( "vr_tools_wireframe.vfx" ); 					// Allows for mat_wireframe to work
-	ToolsShadingComplexity( "vr_tools_shading_complexity.vfx" ); 	// Shows how expensive drawing is in debug view
+    VrForward();
+    Depth( "vr_depth_only.vfx" );
+    ToolsVis( S_MODE_TOOLS_VIS );
+    ToolsWireframe( "vr_tools_wireframe.vfx" );
+    ToolsShadingComplexity( "vr_tools_shading_complexity.vfx" );
 }
 
 //=========================================================================================================================
+
 COMMON
 {
-	#include "common/shared.hlsl"
-    // fresnel base
+    #include "common/shared.hlsl"
 
-    bool g_vUseFresnel< UiGroup("Fresnel"); UiType(CheckBox); Default(0); >;
+    #define S_TRANSLUCENT 1
+    #define BLEND_MODE_ALREADY_SET
+    //#define COLOR_WRITE_ALREADY_SET	
+	
+	// self illmum
+	#undef S_BAKED_SELF_ILLUM
+	#undef S_BAKED_EMISSIVE
+	#define S_SELF_ILLUM 1
+	
+	float3 g_flSelfIllumTintColor < UiType( Color ); Default3( 1.0, 1.0, 1.0 ); UiGroup( "Self Illum" ); >;
+	Float3Attribute( g_flSelfIllumTintColor, true );
+	
+	float2 g_flSelfIllumScrollSpeed < Default2( 0.0, 0.0 ); Range2( -10.0, -10.0, 10.0, 10.0 ); UiGroup( "Self Illum" ); >;
+	Float2Attribute( g_flSelfIllumScrollSpeed, true );
+	
+    float g_flSelfIllumPower < UiGroup("Self Illum"); UiType(Slider); Default(1.0f); Range(0.0f, 8.0f); >;
+    FloatAttribute(g_flSelfIllumPower, true);
+
+    float g_flSelfIllumExponent < UiGroup("Self Illum"); UiType(Slider); Default(1.0f); Range(0.001f, 8.0f); >;
+    FloatAttribute(g_flSelfIllumExponent, true);
+	
+	bool g_vUseFresnel< UiGroup("Self Illum"); UiType(CheckBox); Default(0); >;
     BoolAttribute( g_vUseFresnel, true );
-
-    float g_vFresnelPower < UiGroup("Fresnel"); UiType(Slider); Default(1.0f); Range(0.0f, 2.0f); >;
-    FloatAttribute(g_vFresnelPower, true);
-
-    float4 g_vFresnelColor < UiType( Color ); Default4( 0.0, 0.0, 0.0, 1.0 ); UiGroup( "Fresnel" ); >;
-
-    float g_vFresnelExponent < UiGroup("Fresnel"); UiType(Slider); Default(1.0f); Range(0.0f, 2.0f); >;
-    FloatAttribute(g_fFresnelExponent, true);
-
-    // fresnel threshold
-
-    float g_vFresnelThreshold < UiGroup("Fresnel Threshold"); UiType(Slider); Default(0.5f); Range(0.0f, 1.0f); >;
-    FloatAttribute(g_vFresnelThreshold, true);
-
-    bool g_vUseFresnelThreshold< UiGroup("Fresnel Threshold"); UiType(CheckBox); Default(0); >;
-    BoolAttribute( g_vUseFresnelThreshold, true );
-
+	
+	float g_flAlphaBlobSize< UiGroup("Alpha Blob"); UiType(Slider); Default(1.0f); Range(0.0f, 8.0f); >;
+    FloatAttribute( g_bAlphaBlob, true );
+	
+	float2 g_flAlphaBlobSpeed < Default2( 0.0, 0.0 ); Range2( -10.0, -10.0, 10.0, 10.0 ); UiGroup( "Alpha Blob" ); >;
+	Float2Attribute( g_flAlphaBlobSpeed, true );
+	
+	float g_flAlphaBlobAmount< UiGroup("Alpha Blob"); UiType(Slider); Default(1.0f); Range(0.0f, 8.0f); >;
+    FloatAttribute( g_flAlphaBlobAmount, true );
 }
 
 //=========================================================================================================================
 
 struct VertexInput
 {
-	#include "common/vertexinput.hlsl"
+    #include "common/vertexinput.hlsl"
 };
 
 //=========================================================================================================================
 
 struct PixelInput
 {
-	#include "common/pixelinput.hlsl"
+    #include "common/pixelinput.hlsl"
 };
 
 //=========================================================================================================================
 
 VS
 {
-	#include "common/vertex.hlsl"
-    
-	PixelInput MainVs( INSTANCED_SHADER_PARAMS( VS_INPUT i ) )
-	{
-		PixelInput o = ProcessVertex( i );
-		return FinalizeVertex( o );
-	}
+    #include "common/vertex.hlsl"
+    //
+    // Main
+    // 	
+    PixelInput MainVs( INSTANCED_SHADER_PARAMS( VS_INPUT i ) )
+    {
+        PixelInput o = ProcessVertex( i );
+				
+        return FinalizeVertex( o );
+    }
 }
 
 //=========================================================================================================================
@@ -77,22 +104,83 @@ VS
 PS
 {
     #include "common/pixel.hlsl"
+    #include "common/proceedural.hlsl"
+	
+	RenderState( BlendEnable, true );
+    RenderState( SrcBlend, SRC_ALPHA );
+    RenderState( DstBlend, INV_SRC_ALPHA );
 
-	PixelOutput MainPs( PixelInput i )
-	{
-		Material m = GatherMaterial( i );
-        PixelOutput o = FinalizePixelMaterial( i, m );
+	// Always write rgba
+	//RenderState( ColorWriteEnable0, RGBA );
+	//RenderState( FillMode, SOLID );
+    //RenderState(AlphaToCoverageEnable, true);
 
-        if(g_vUseFresnel) {
-            float3 dirToCamera = normalize(i.vPositionWithOffsetWs);
-            float fresnel = pow(1.0 + dot(i.vNormalWs, dirToCamera), g_vFresnelExponent);
+    //=====================================================================================================================
 
-            if(g_vUseFresnelThreshold) {
-                fresnel = fresnel > g_vFresnelThreshold;
-            }
+    PixelOutput MainPs( PixelInput i )
+    {
+        Material m = GatherMaterial( i );
+		//
+        // Sample textures
+        //
+		float2 vUV = i.vTextureCoords.xy;
+		float2 vUVOfEmissionMoved = vUV + (g_flTime * g_flSelfIllumScrollSpeed);
+		
+		float4 EmissionMask = Tex2DS( g_tSelfIllumMask, TextureFiltering, vUVOfEmissionMoved ) * m.Opacity;
 
-            o.vColor = lerp(o.vColor, g_vFresnelColor, fresnel * g_vFresnelPower);
-        }
-		return o;
-	}
+		
+		if( g_flAlphaBlobSize > 0 && g_flAlphaBlobAmount > 0 ) {
+			float2 vUVOfBlobMoved = vUV + (g_flTime * g_flAlphaBlobSpeed.xy);
+		
+			float perlin_n = ValueNoise( vUVOfBlobMoved * g_flAlphaBlobSize );
+			float perlin_t = ( 0.5 + cos(g_flTime) / 2);
+			
+			float noise = pow(perlin_n, g_flAlphaBlobAmount + perlin_t);
+			
+			m.Opacity *= (1-noise);
+			
+			EmissionMask = lerp(EmissionMask, noise, Simplex2D(vUV));
+			/*
+			PixelOutput o;
+			o.vColor.rgb = noise;
+			o.vColor.a = 1;
+			return o;*/
+		}
+		
+		m.Emission = EmissionMask.rgb * g_flEmissionScale * g_flSelfIllumTintColor;
+        //
+        // Output
+        //
+		
+		
+        PixelOutput o;
+
+		if( 0 )
+			o = FinalizePixelMaterial( i, m );
+		else // unlit
+			o.vColor.rgb = m.Albedo;
+
+		o.vColor.a = m.Opacity;
+		
+		
+		if( g_flEmissionScale > 0 ) {
+			float brightness = 0;
+			
+			if(g_vUseFresnel) {
+				float3 dirToCamera = normalize(i.vPositionWithOffsetWs);
+				brightness = pow(1 + dot(i.vNormalWs, dirToCamera), g_flSelfIllumExponent) * g_flSelfIllumPower;
+			}
+			else {
+				brightness = pow(1 + EmissionMask.r, g_flSelfIllumExponent) * g_flSelfIllumPower;
+			}
+			
+			o.vColor.rgb += m.Emission.rgb * brightness;
+		}
+		
+		//o.vColor.a += EmissionMask.r * g_flSelfIllumPower;
+		//o.vColor.rgb = lerp(m.Albedo, m.Emission, brightness);
+        //o.vColor.a = lerp(m.Opacity, EmissionMask.r, brightness);
+		
+        return o;
+    }
 }

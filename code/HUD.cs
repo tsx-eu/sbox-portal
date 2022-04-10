@@ -8,8 +8,11 @@ namespace PortalGame
 	{
 		public HUD()
 		{
-			if( IsClient )
-				RootPanel.AddChild<RenderTargets>();
+			if ( !IsClient )
+				return;
+
+			RootPanel.StyleSheet.Load( "/HUD.scss" );
+			RootPanel.AddChild<RenderTargets>();
 		}
 	}
 

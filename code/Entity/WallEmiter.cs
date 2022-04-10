@@ -29,7 +29,7 @@ namespace PortalGame
 			PhysicsEnabled = false;
 
 			EmitedEntity?.Delete();
-			EmitedEntity = new WallEmition();
+			EmitedEntity = new WallEmitionCleaner();
 			EmitedEntity.Transform = Transform;
 			EmitedEntity.Parent = this;
 			EmitedEntity.Spawn();
@@ -55,6 +55,11 @@ namespace PortalGame
 
 	public partial class WallEmition : Prop
 	{
+		protected virtual Material Material { get; set; }
+
+		public WallEmition() {
+			Material = Material.Load( "materials/error.vmat" );
+		}
 
 		public override void Spawn() {
 			base.ClientSpawn();
@@ -116,7 +121,7 @@ namespace PortalGame
 
 
 
-			var mesh = new Mesh( Material.Load( "materials/effects/test2.vmat" ) );
+			var mesh = new Mesh( Material );
 			mesh.CreateBuffers( vb );
 
 			var model = Model.Builder
@@ -126,6 +131,15 @@ namespace PortalGame
 			Model = model;
 			SetupPhysicsFromModel( PhysicsMotionType.Dynamic );
 			Log.Info( "generated" );
+		}
+	}
+
+	public partial class WallEmitionCleaner : WallEmition
+	{
+		public WallEmitionCleaner()
+		{
+			//Material = Material.Load( "materials/effects/test.vmat" );
+			Material = Material.Load( "materials/effects/solidbeam.vmat" );
 		}
 	}
 }
