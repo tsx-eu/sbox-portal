@@ -29,7 +29,7 @@ namespace PortalGame
 			PhysicsEnabled = false;
 
 			EmitedEntity?.Delete();
-			EmitedEntity = new WallEmitionCleaner();
+			EmitedEntity = new WallEmitionBarrier();
 			EmitedEntity.Transform = Transform;
 			EmitedEntity.Parent = this;
 			EmitedEntity.Spawn();
@@ -56,6 +56,7 @@ namespace PortalGame
 	public partial class WallEmition : Prop
 	{
 		protected virtual Material Material { get; set; }
+		protected virtual bool Solid { get; set; }
 
 		public WallEmition() {
 			Material = Material.Load( "materials/error.vmat" );
@@ -73,7 +74,7 @@ namespace PortalGame
 		}
 		
 		[Event.Entity.PostSpawn]
-		public void Generate()
+		public virtual void Generate()
 		{
 			Vector3 start = Transform.Position + Transform.Rotation.Forward * 8;
 
@@ -101,7 +102,8 @@ namespace PortalGame
 			vb.Init( true );
 
 			vb.Default.Normal = f.Normal;
-			vb.Default.Tangent = new Vector4( l.Normal, 1 );
+			vb.Default.Tangent = new Vector4( u.Normal, 1 );
+
 
 			vb.Add( o + u - f, new Vector2( 0, 1 ) );
 			vb.Add( o + u + f, new Vector2( length / 64f, 1 ) );
@@ -119,18 +121,21 @@ namespace PortalGame
 			vb.AddTriangleIndex( 4, 3, 2 );
 			vb.AddTriangleIndex( 2, 1, 4 );
 
-
-
 			var mesh = new Mesh( Material );
 			mesh.CreateBuffers( vb );
 
 			var model = Model.Builder
 				.AddMesh( mesh )
+				.AddCollisionBox(new Vector3(length/2, 32, 1), o)
 				.Create();
 
 			Model = model;
 			SetupPhysicsFromModel( PhysicsMotionType.Dynamic );
-			Log.Info( "generated" );
+
+			EnableTraceAndQueries = Solid;
+			EnableSolidCollisions = Solid;
+			EnableTouch = true;
+			EnableTouchPersists = true;
 		}
 	}
 
@@ -138,8 +143,33 @@ namespace PortalGame
 	{
 		public WallEmitionCleaner()
 		{
-			//Material = Material.Load( "materials/effects/test.vmat" );
+			Material = Material.Load( "materials/effects/cleaner.vmat" );
+			Solid = false;
+		}
+
+		public override void Touch( Entity other )
+		{
+			base.Touch( other );
+
+			if ( other.IsWorld )
+				return;
+
+			if( other is IPlayerGrabable ) {
+				other.Delete();
+			}
+
+			if( other is PortalPlayer ) {
+				Log.Info( "touch" );
+			}
+		}
+	}
+
+	public partial class WallEmitionBarrier : WallEmition
+	{
+		public WallEmitionBarrier()
+		{
 			Material = Material.Load( "materials/effects/solidbeam.vmat" );
+			Solid = true;
 		}
 	}
 }

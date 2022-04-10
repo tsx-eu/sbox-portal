@@ -59,13 +59,13 @@ COMMON
 	bool g_vUseFresnel< UiGroup("Self Illum"); UiType(CheckBox); Default(0); >;
     BoolAttribute( g_vUseFresnel, true );
 	
-	float g_flAlphaBlobSize< UiGroup("Alpha Blob"); UiType(Slider); Default(1.0f); Range(0.0f, 8.0f); >;
+	float g_flAlphaBlobSize< UiGroup("Alpha Blob"); UiType(Slider); Default(0.0f); Range(0.0f, 8.0f); >;
     FloatAttribute( g_bAlphaBlob, true );
 	
 	float2 g_flAlphaBlobSpeed < Default2( 0.0, 0.0 ); Range2( -10.0, -10.0, 10.0, 10.0 ); UiGroup( "Alpha Blob" ); >;
 	Float2Attribute( g_flAlphaBlobSpeed, true );
 	
-	float g_flAlphaBlobAmount< UiGroup("Alpha Blob"); UiType(Slider); Default(1.0f); Range(0.0f, 8.0f); >;
+	float g_flAlphaBlobAmount< UiGroup("Alpha Blob"); UiType(Slider); Default(0.0f); Range(0.0f, 8.0f); >;
     FloatAttribute( g_flAlphaBlobAmount, true );
 }
 
@@ -167,19 +167,15 @@ PS
 			float brightness = 0;
 			
 			if(g_vUseFresnel) {
-				float3 dirToCamera = normalize(i.vPositionWithOffsetWs);
-				brightness = pow(1 + dot(i.vNormalWs, dirToCamera), g_flSelfIllumExponent) * g_flSelfIllumPower;
+				float3 vPositionWs = normalize(i.vPositionWithOffsetWs.xyz + g_vHighPrecisionLightingOffsetWs.xyz);
+				brightness = pow(1 + EmissionMask.r + dot(i.vNormalWs, vPositionWs), g_flSelfIllumExponent) * g_flSelfIllumPower;
 			}
 			else {
-				brightness = pow(1 + EmissionMask.r, g_flSelfIllumExponent) * g_flSelfIllumPower;
+				brightness = pow(2 + EmissionMask.r, g_flSelfIllumExponent) * g_flSelfIllumPower;
 			}
 			
 			o.vColor.rgb += m.Emission.rgb * brightness;
 		}
-		
-		//o.vColor.a += EmissionMask.r * g_flSelfIllumPower;
-		//o.vColor.rgb = lerp(m.Albedo, m.Emission, brightness);
-        //o.vColor.a = lerp(m.Opacity, EmissionMask.r, brightness);
 		
         return o;
     }
