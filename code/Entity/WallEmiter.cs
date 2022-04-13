@@ -25,14 +25,26 @@ namespace PortalGame
 		{
 			base.Spawn();
 			SetModel( "models/props/sign_frame01/wall_emitter.vmdl" );
-			SetupPhysicsFromModel( PhysicsMotionType.Dynamic );
+			//SetupPhysicsFromModel( PhysicsMotionType.Dynamic );
 			PhysicsEnabled = false;
 
 			EmitedEntity?.Delete();
-			EmitedEntity = new WallEmitionBarrier();
-			EmitedEntity.Transform = Transform;
-			EmitedEntity.Parent = this;
-			EmitedEntity.Spawn();
+			EmitedEntity = null;
+
+			switch ( Emition ) {
+				case EmitionType.Cleaner:
+					EmitedEntity = new WallEmitionCleaner();
+					break;
+				case EmitionType.Bridge:
+					EmitedEntity = new WallEmitionBarrier();
+					break;
+			}
+
+			if ( EmitedEntity != null ) {
+				EmitedEntity.Transform = Transform;
+				EmitedEntity.Parent = this;
+				EmitedEntity.Spawn();
+			}
 		}
 
 		[Input]
@@ -57,9 +69,14 @@ namespace PortalGame
 	{
 		protected virtual Material Material { get; set; }
 		protected virtual bool Solid { get; set; }
+		protected virtual int Height { get; set; }
+		protected virtual bool Ending { get; set; }
 
 		public WallEmition() {
 			Material = Material.Load( "materials/error.vmat" );
+			Solid = false;
+			Height = 64;
+			Ending = false;
 		}
 
 		public override void Spawn() {
@@ -94,7 +111,7 @@ namespace PortalGame
 
 			var f = Vector3.Forward * length * 0.5f;
 			var l = Vector3.Up * 2 * 0.5f;
-			var u = Vector3.Left * 64 * 0.5f;
+			var u = Vector3.Left * Height * 0.5f;
 
 			var o = f + Vector3.Forward * 8;
 
@@ -126,7 +143,7 @@ namespace PortalGame
 
 			var model = Model.Builder
 				.AddMesh( mesh )
-				.AddCollisionBox(new Vector3(length/2, 32, 1), o)
+				.AddCollisionBox(new Vector3(length/2, Height/2, 1), o)
 				.Create();
 
 			Model = model;
@@ -136,6 +153,16 @@ namespace PortalGame
 			EnableSolidCollisions = Solid;
 			EnableTouch = true;
 			EnableTouchPersists = true;
+
+			if( Ending && Host.IsClient ) {
+				var prop = new Prop();
+				prop.Position = end + Rotation.Forward * 6;
+				prop.Rotation = Rotation.RotateAroundAxis( Rotation.Left, 180 );
+				prop.Parent = this;
+				prop.SetModel( "models/props/sign_frame01/wall_emitter.vmdl" );
+				prop.EnableAllCollisions = false;
+				prop.Spawn();
+			}
 		}
 	}
 
@@ -145,6 +172,8 @@ namespace PortalGame
 		{
 			Material = Material.Load( "materials/effects/cleaner.vmat" );
 			Solid = false;
+			Height = 72;
+			Ending = true;
 		}
 
 		public override void Touch( Entity other )

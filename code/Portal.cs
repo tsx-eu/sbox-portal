@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Sandbox;
 
 namespace PortalGame
@@ -262,8 +263,19 @@ namespace PortalGame
 				OnTriggerExit( traveller );
 		}
 
-		public void Open(Portal portal)
+		public void Open( Portal portal )
 		{
+			if( LinkedWall == null ) {
+				var ray = Trace
+					.Sphere(16.0f, Position, Position)
+					.EntitiesOnly()
+					.RunAll()
+					.Where( i => i.Entity is Wall ).FirstOrDefault();
+
+				if ( ray.Hit )
+					Open( ray.Entity as Wall );
+			}
+
 			LinkedPortal = portal;
 			EnableDrawing = !LinkedPortal.IsValid();
 		}
